@@ -40,6 +40,68 @@ Roo Code 是一个强大的 AI 编程助手前端，但当你切换不同模型�
 
 ---
 
+## 🔒 安全性说明（专业用户必读）
+
+> 作为本地代理，RooCode Plus 会处理你的 API 请求和代码上下文。以下从专业角度说明安全模型。
+
+### 架构安全
+
+| 维度 | 设计决策 |
+|---|---|
+| **网络边界** | 默认绑定 `127.0.0.1:8000`，仅监听本地回环地址，外网无法访问 |
+| **API Key 存储** | 通过环境变量 `DEEPSEEK_API_KEY` 注入，代码中不包含任何硬编码密钥 |
+| **请求转发** | 请求经代理修正后直连 `api.deepseek.com`，无中间跳转、无第三方日志上报 |
+| **数据落盘** | 代理本身不存储任何请求/响应内容。日志仅输出连接状态到 `proxy.log`，不记录对话正文 |
+| **依赖最小化** | 仅依赖 `fastapi` + `httpx` + `uvicorn` 三个包，攻击面可控 |
+
+### 代码级安全验证
+
+```bash
+# 克隆后立即验证：确认代码中没有硬编码密钥
+grep -n "sk-" proxy_server.py
+# 唯一输出应为第 9 行的默认占位符注释，不包含真实密钥
+
+# 确认监听地址
+grep "host=" proxy_server.py
+# 输出: uvicorn.run(app, host="127.0.0.1", port=8000, ...)
+```
+
+### 你的 API Key 流经路径
+
+```text
+你的 Shell 环境变量                代理内存（进程存活期间）
+DEEPSEEK_API_KEY="sk-xxx"  ──▶  os.environ.get()  ──▶  Authorization Header
+                                                          │
+                                                    api.deepseek.com
+                                                          │
+                                             Key 不出本地网络边界
+```
+
+全程 **Key 不会写入磁盘、不会发送到第三方、不会出现在日志中**。
+
+### 风险边界
+
+| 风险 | 等级 | 缓解措施 |
+|---|---|---|
+| 本地恶意软件读取环境变量 | 低 | 不属本项目范围，属操作系统安全 |
+| 代理端口被局域网扫描 | 低 | 默认 `127.0.0.1` 不暴露到局域网 |
+| 日志文件泄露敏感信息 | 极低 | 日志不含对话正文、不含 Key |
+| 依赖包供应链攻击 | 极低 | 三个依赖均为 PyPI 顶级包（fastapi 70k+ stars，httpx 13k+ stars） |
+
+### 生产环境建议
+
+如果你要在团队服务器上部署：
+
+```bash
+# 1. 使用 systemd 管理进程（而非 nohup）
+# 2. 通过 systemd EnvironmentFile 注入 API Key（而非 ~/.bashrc）
+# 3. 限制 proxy.log 文件权限
+chmod 600 proxy.log
+# 4. 考虑添加 rate limiting（参考 proxy_server.py 中 apply_model_patches 的 TODO）
+```
+
+---
+
 ## 🗺️ 适配路线图
 
 | 模型 | 状态 |
