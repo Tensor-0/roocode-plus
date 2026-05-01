@@ -7,6 +7,17 @@
 
 ---
 
+## 🧭 我应该看哪部分？
+
+| 你的情况 | 去看这里 |
+|---|---|
+| 没用过 VS Code，没用过终端，第一次接触 AI 编程 | → [🟢 零基础教程](#-零基础教程高中生友好) |
+| 会用 VS Code 和终端，知道 venv/pip 是什么 | → [🔵 专业用户快速上手](#-专业用户快速上手) |
+| 已经启动代理，要在 Roo Code 里配置 | → [🔧 Roo Code 配置指南](#-roo-code-配置指南) |
+| 出错了！不知道怎么办 | → [🆘 故障排除大全](#-故障排除大全) |
+
+---
+
 ## 📖 这个项目是什么？
 
 **RooCode Plus** 是一个轻量级本地适配代理，架在 Roo Code 和各种 AI 模型 API 之间。
@@ -26,7 +37,9 @@ Roo Code 是一个强大的 AI 编程助手前端，但当你切换不同模型�
 
 **RooCode Plus 在请求发出去之前帮你把这些问题全部修好。**
 
-### 🗺️ 适配路线图
+---
+
+## 🗺️ 适配路线图
 
 | 模型 | 状态 |
 |---|---|
@@ -39,21 +52,141 @@ Roo Code 是一个强大的 AI 编程助手前端，但当你切换不同模型�
 
 ---
 
-## 🚀 快速上手
+# 🟢 零基础教程（高中生友好）
+
+> 如果你从来没打开过「终端」，不知道什么叫「命令行」—— 别怕，跟着下面一步步做，每步都有解释。
+
+---
+
+## 第 1 章：准备工作（一次性）
+
+### 1.1 什么是「终端」？
+
+终端就是你和电脑「打字交流」的地方。在 VS Code 里按 `` Ctrl+` ``（键盘左上角 ESC 下面的那个键），下面会弹出一个窗口，那个就是终端。
+
+> 📺 **视觉参考**：弹出窗口里你会看到类似 `user@computer:~$` 这样的一行字，光标在 `$` 后面闪 —— 这就是终端，等着你输入命令。
+
+### 1.2 确保你有 Python
+
+在终端里**一个字一个字地**输入下面这行，然后按回车：
+
+```bash
+python3 --version
+```
+
+你应该看到类似 `Python 3.10.12` 或 `Python 3.11.x` 的输出。
+
+**如果显示的不是 3.8 以上的数字**，说明你没有 Python。去 [python.org](https://www.python.org/downloads/) 下载安装。
+
+> 💡 输入命令时不需要打 `bash` 那个字，`bash` 只是标记「这是一条终端命令」。你只需要输入 `python3 --version` 然后按回车。
+
+### 1.3 下载本项目
+
+在终端里**一行一行地**执行（每行输完按回车，等它跑完再输下一行）：
+
+```bash
+cd ~
+```
+
+> 💡 这行命令的意思：把终端「切换」到家目录。`~` 就是你的个人文件夹的缩写，`cd` 就是「去某个地方」。
+
+```bash
+git clone https://github.com/Tensor-0/roocode-plus.git
+```
+
+> 💡 这行命令的意思：从 GitHub 把代码「克隆」到你的电脑上。`clone` = 复制一份。如果提示 `git: command not found`，见 [故障：提示 'git' 未找到](#1-提示-git-未找到)。
+
+```bash
+cd roocode-plus
+```
+
+> 💡 进入刚刚下载的 roocode-plus 文件夹。
+
+### 1.4 创建「虚拟环境」
+
+Python 的虚拟环境就像给这个项目划了一间「单独的房间」，里面安装的东西不会影响你电脑上的其他程序。
+
+在终端里：
+
+```bash
+python3 -m venv venv
+```
+
+> 💡 `-m venv venv` 的意思是「用 Python 的 venv 模块，创建一个叫 venv 的文件夹」。输完可能没有任何提示，这是正常的（在终端里，「没消息就是好消息」）。
+
+### 1.5 进入虚拟环境
+
+```bash
+source venv/bin/activate
+```
+
+执行后，你会看到终端前面多了一个 `(venv)` 的标志。这表示你已经进入了「房间」。
+
+> 💡 如果你是 Windows 系统，命令不同：`venv\Scripts\activate`
+
+### 1.6 安装依赖
+
+```bash
+pip install fastapi httpx uvicorn
+```
+
+> 💡 `pip install` = 从网上下载安装 Python 插件包。你会看到一堆进度条在跑，最后出现 `Successfully installed ...` 就对了。
+
+### 1.7 设置 API Key
+
+```bash
+export DEEPSEEK_API_KEY="sk-你的真实密钥"
+```
+
+> ⚠️ 把 `sk-你的真实密钥` 替换成你的真实 DeepSeek API Key（在 [platform.deepseek.com](https://platform.deepseek.com/) 的 API Keys 页面获取）。密钥格式类似 `sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx`。
+
+### 1.8 启动代理
+
+```bash
+./start_proxy.sh
+```
+
+你应该看到：
+
+```text
+============================================
+  RooCode Plus — Multi-Model Adapter
+============================================
+[成功] RooCode Plus 已在后台启动！PID: 12345
+       监听地址: http://127.0.0.1:8000/v1/chat/completions
+```
+
+> 🎉 恭喜！代理已经运行起来了。现在保持终端不要关，去看下面的 [Roo Code 配置指南](#-roo-code-配置指南)。
+
+---
+
+### 🆘 零基础常见问题快速跳转
+
+| 问题 | 跳转 |
+|---|---|
+| 提示 `python3: command not found` | → [故障 2](#2-提示-python3-未找到) |
+| 提示 `git: command not found` | → [故障 1](#1-提示-git-未找到) |
+| `pip install` 报网络错误 | → [故障 5](#5-网络连接失败) |
+| 提示 `permission denied: ./start_proxy.sh` | → [故障 11](#11-权限拒绝-permission-denied) |
+| 什么提示都没有就结束了 | → [故障 3](#3-漏步骤或跳步骤了) |
+
+---
+
+# 🔵 专业用户快速上手
 
 ### 环境要求
 
 - **Python** ≥ 3.8
 - **操作系统**: Linux / macOS / Windows (WSL)
 
-### 1. 克隆仓库
+### 1. 克隆
 
 ```bash
 git clone https://github.com/Tensor-0/roocode-plus.git
 cd roocode-plus
 ```
 
-### 2. 安装依赖
+### 2. 安装
 
 ```bash
 python3 -m venv venv
@@ -64,15 +197,10 @@ pip install fastapi httpx uvicorn
 ### 3. 配置 API Key
 
 ```bash
-# DeepSeek 用户
 export DEEPSEEK_API_KEY="sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-
-# 未来其他模型:
-# export OPENAI_API_KEY="sk-xxx"
-# export ANTHROPIC_API_KEY="sk-ant-xxx"
 ```
 
-> 也可将上述命令写入 `~/.bashrc` / `~/.zshrc` 持久化。
+> 也可写入 `~/.bashrc` / `~/.zshrc` 持久化。
 
 ### 4. 启动
 
@@ -80,7 +208,7 @@ export DEEPSEEK_API_KEY="sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 ./start_proxy.sh
 ```
 
-启动成功后会显示：
+启动成功后：
 
 ```text
 ============================================
@@ -98,6 +226,8 @@ export DEEPSEEK_API_KEY="sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 
 在 VS Code 中，点击左侧 Roo Code 面板 → 右上角齿轮图标 ⚙️ → **Provider Settings**。
 
+> 📺 **视觉参考**：左侧边栏有一个 Roo Code 的图标（通常是一个小机器人），点击它会展开一个面板。面板右上角有一个齿轮 ⚙️。
+
 ### 步骤 2：配置提供商
 
 | 配置项 | 值 |
@@ -109,7 +239,7 @@ export DEEPSEEK_API_KEY="sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 
 ### 步骤 3：验证
 
-在 Roo Code 中发送一条测试消息：
+在 Roo Code 聊天框发送：
 
 ```
 你好！当前使用的上下文窗口有多大？
@@ -129,6 +259,294 @@ export DEEPSEEK_API_KEY="sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
                             ├── 补全缺失字段（如 reasoning_content）
                             ├── 修正消息格式
                             └── 流式转发响应（零性能损耗）
+```
+
+---
+
+# 🆘 故障排除大全
+
+> 遇到问题了？按 Ctrl+F 搜索你的错误信息，或按编号查找。
+
+---
+
+## 安装阶段故障
+
+### 1. 提示 'git' 未找到
+
+**错误信息**：`git: command not found` 或 `'git' 不是内部或外部命令`
+
+**原因**：你的电脑没装 Git。
+
+**解决**：
+
+- **Windows**: 去 [git-scm.com](https://git-scm.com/downloads/win) 下载安装，一路点「Next」，全部用默认选项即可。
+- **macOS**: 在终端输入 `xcode-select --install`，弹窗点「安装」。
+- **Linux**: 在终端输入 `sudo apt install git -y`（Ubuntu/Debian）或 `sudo yum install git -y`（CentOS）。
+
+装好后重新打开终端，输入 `git --version` 确认。
+
+### 2. 提示 'python3' 未找到
+
+**错误信息**：`python3: command not found`
+
+**原因**：没装 Python 或者装了但命令名不一样。
+
+**解决**：
+
+1. 试试输入 `python --version`（不带 3），看能否显示 Python 3.x。
+2. 如果不能，去 [python.org](https://www.python.org/downloads/) 下载 Python 安装包。
+   - **Windows 安装注意**：安装界面**一定要勾选**「Add Python to PATH」这个复选框！不然装完还得手动配。
+3. 装好后**关掉终端重新打开**，再试。
+
+### 3. 漏步骤或跳步骤了
+
+**症状**：执行某条命令时报错，但前面的命令好像跑过。
+
+**常见漏步**：
+
+| 如果你跳过了 | 出错的命令 | 怎么补救 |
+|---|---|---|
+| `cd roocode-plus` | `./start_proxy.sh` 找不到 | 手动执行 `cd ~/roocode-plus` |
+| `python3 -m venv venv` | `source venv/bin/activate` 失败 | 回到第 1.4 步创建虚拟环境 |
+| `source venv/bin/activate` | `pip install` 装到了系统而非虚拟环境 | 先执行 `source venv/bin/activate` |
+| `pip install ...` | `./start_proxy.sh` 报缺少模块 | 先执行 `pip install fastapi httpx uvicorn` |
+
+> 💡 **最安全的做法**：严格按顺序操作，每步确认成功后再做下一步。终端里「没报错」就是成功。
+
+### 4. 看错步骤了
+
+**症状**：你觉得自己照着做了，但就是不行。
+
+**最常见的看错情况**：
+
+- 把 `roocode-plus` 打成了 `roocode_plus`（下划线 vs 横线）
+- 把 `DEEPSEEK_API_KEY` 打成了 `DEEPSEEK_APIKEY`（少了下划线）
+- 把 `sk-` 后面的密钥中的字母 `I`（大写 i）看成了 `l`（小写 L）或 `1`（数字 1）
+- 把 `./start_proxy.sh` 打成了 `./start proxy.sh`（多了空格）
+
+> 💡 **自查方法**：把你的命令和教程里的命令**逐个字符**对比一遍。特别检查英文大小写、横线/下划线、空格。
+
+---
+
+## 运行阶段故障
+
+### 5. 网络连接失败
+
+**错误信息**：`pip install` 时出现 `Connection timeout`、`Network is unreachable`、`Could not resolve host`
+
+**原因**：你开了代理但代理有问题，或者网络本身不稳定。
+
+**解决**：
+
+**场景 A —— 你开着 VPN 或代理软件（如 Clash、V2Ray）**：
+```bash
+# 先关掉代理软件，然后在终端里输入：
+unset http_proxy
+unset https_proxy
+unset all_proxy
+# 再重试 pip install
+pip install fastapi httpx uvicorn
+```
+
+**场景 B —— 你在中国大陆，没开代理**：
+```bash
+# 使用清华镜像源加速
+pip install -i https://pypi.tuna.tsinghua.edu.cn/simple fastapi httpx uvicorn
+```
+
+**场景 C —— 代理开着但配置不对**：
+```bash
+# 检查当前代理设置
+echo $http_proxy
+echo $https_proxy
+# 如果输出不为空但代理软件已关，清除它们：
+unset http_proxy https_proxy all_proxy
+```
+
+### 6. 代理启动后 Roo Code 连不上
+
+**症状**：Roo Code 报 `Failed to fetch` 或连接被拒绝。
+
+**逐项排查**：
+
+```
+[1] 代理还在运行吗？
+    → 终端输入: ps aux | grep proxy_server
+    → 如果没有输出，说明代理已经挂了，重新执行 ./start_proxy.sh
+
+[2] 端口对吗？
+    → 确认 Roo Code 的 Base URL 是 http://127.0.0.1:8000/v1
+    → 不是 https！不是 http://localhost！是 http://127.0.0.1:8000/v1
+
+[3] 防火墙拦了吗？
+    → Windows 用户：首次启动代理时可能会弹出防火墙提示，必须点「允许」
+    → 如果没弹窗或点了阻止：去 Windows 防火墙设置里放行 Python
+
+[4] 代理端报错了吗？
+    → 终端输入: tail -20 proxy.log
+    → 查看最后 20 行日志，找到具体错误原因
+```
+
+### 7. DeepSeek API 返回 401 Unauthorized
+
+**错误信息**：`[API 报错] 状态码: 401`
+
+**原因**：DeepSeek API Key 不对。
+
+**解决**：
+```bash
+# 检查当前设置的值
+echo $DEEPSEEK_API_KEY
+# 如果显示为空或「你的真实API_KEY写在这里」，需要重新设置：
+export DEEPSEEK_API_KEY="sk-你的真实密钥"
+# 然后重启代理：
+kill $(ps aux | grep proxy_server | grep -v grep | awk '{print $2}')
+./start_proxy.sh
+```
+
+> ⚠️ 注意检查密钥中是否混入了空格（复制粘贴时常见）。密钥应该是连续的字符，没有空格。
+
+### 8. DeepSeek API 返回 400 Bad Request
+
+**错误信息**：`[API 报错] 状态码: 400`
+
+**可能原因及解决**：
+
+| 原因 | 解决 |
+|---|---|
+| Roo Code 端的 Model ID 填错了 | 必须填 `deepseek-chat`，不是 `deepseek-v4` 或其他 |
+| Base URL 多了/少了路径 | 必须是 `http://127.0.0.1:8000/v1`，不要在末尾加 `/chat/completions` |
+| API Key 为空 | Roo Code 侧随便填一个非空字符串即可 |
+
+### 9. 突然电脑关机了
+
+**症状**：电脑重启后，之前能用的代理连不上了。
+
+**原因**：代理是后台运行的，关机后进程自然就没了。而且终端里的 `export` 命令设置的 API Key 在重启后也丢失了。
+
+**解决**（按顺序）：
+
+```bash
+# 1. 重新进入项目目录
+cd ~/roocode-plus
+
+# 2. 重新激活虚拟环境
+source venv/bin/activate
+
+# 3. 重新设置 API Key
+export DEEPSEEK_API_KEY="sk-你的真实密钥"
+
+# 4. 重新启动代理
+./start_proxy.sh
+```
+
+> 💡 **不想每次重启都配？** 把 `export DEEPSEEK_API_KEY="sk-..."` 写入 `~/.bashrc` 文件末尾即可永久生效：
+> ```bash
+> echo 'export DEEPSEEK_API_KEY="sk-你的真实密钥"' >> ~/.bashrc
+> source ~/.bashrc
+> ```
+
+### 10. 端口被占用
+
+**错误信息**：`OSError: [Errno 98] Address already in use` 或 `端口 8000 已被占用`
+
+**原因**：上次的代理进程可能没关干净，或者有其他程序占了 8000 端口。
+
+**解决**：
+
+```bash
+# 方法 1：杀掉旧进程
+kill $(lsof -t -i:8000) 2>/dev/null
+# 然后重新启动
+./start_proxy.sh
+
+# 方法 2：如果方法 1 不行，换一个端口
+# 编辑 proxy_server.py 最后一行的 port=8000 改成 port=9000
+# 然后 Roo Code 的 Base URL 也改成 http://127.0.0.1:9000/v1
+```
+
+### 11. 权限拒绝 (Permission Denied)
+
+**错误信息**：`bash: ./start_proxy.sh: Permission denied` 或 `permission denied`
+
+**原因**：脚本没有执行权限。
+
+**解决**：
+
+```bash
+chmod +x start_proxy.sh
+```
+
+然后重新执行 `./start_proxy.sh`。
+
+### 12. 虚拟环境找不到
+
+**错误信息**：启动脚本显示 `[错误] 未检测到 Python 虚拟环境`
+
+**原因**：没有创建 venv 或者不在项目目录里。
+
+**解决**：
+
+```bash
+# 确认你在项目目录
+cd ~/roocode-plus
+# 确认 venv 文件夹存在
+ls venv/bin/activate
+# 如果不存在，创建它：
+python3 -m venv venv
+# 然后安装依赖：
+source venv/bin/activate
+pip install fastapi httpx uvicorn
+```
+
+### 13. 代理日志显示 "Name or service not known"
+
+**错误信息**：`[API 报错] ... Name or service not known`
+
+**原因**：DNS 解析失败，你的网络环境无法访问 `api.deepseek.com`。
+
+**解决**：
+
+```bash
+# 测试是否真的连不上
+curl -I https://api.deepseek.com
+
+# 如果确认连不上：
+# 1. 检查你是否能正常上网（打开浏览器随便访问一个网站试试）
+# 2. 如果开着代理，参考 [故障 5](#5-网络连接失败) 排查代理问题
+# 3. 如果在中国大陆没开代理，DeepSeek API 可能被墙，需要开代理
+```
+
+---
+
+## Roo Code 配置阶段故障
+
+### 14. Roo Code 里找不到某个配置项
+
+**原因**：Roo Code 版本太旧或界面布局有差异。
+
+**解决**：
+
+1. 确保 VS Code 和 Roo Code 扩展都是最新版（在 VS Code 扩展面板搜索 Roo Code，点「更新」）。
+2. 如果界面不同，核心原则不变：找到 Provider 设置 → 选「OpenAI Compatible」类型 → 填入 Base URL 和 Model ID。
+
+### 15. 配置完 Roo Code 后没有任何反应
+
+**症状**：发了消息，Roo Code 没有任何输出，也没有报错。
+
+**排查**：
+
+```bash
+# 1. 看代理日志有没有收到请求
+tail -f ~/roocode-plus/proxy.log
+# 然后在 Roo Code 里再发一条消息
+# 如果日志没有任何新输出 → Roo Code 根本没连到代理
+
+# 2. 检查 Roo Code 配置
+# - API Provider 是不是选的 "OpenAI Compatible"？
+# - Base URL 是不是 http://127.0.0.1:8000/v1 ？
+# - 有没有不小心在前面多打了一个空格？
+# - 是不是选错了 Profile（Roo Code 有多个 Profile 切换）？
 ```
 
 ---
@@ -184,10 +602,6 @@ def apply_model_patches(body: dict) -> dict:
 ```bash
 tail -f proxy.log
 ```
-
-### Q: 端口被占用？
-
-编辑 `proxy_server.py` 最后一行的 `port=8000`，并同步更新 Roo Code 中的 Base URL。
 
 ### Q: 如何停止代理？
 
