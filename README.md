@@ -3,7 +3,7 @@
 Roo Code 的多模型适配层。解决 Roo Code 切换到不同模型时遇到的兼容性问题。目前适配了 DeepSeek，后续会覆盖更多模型。
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Python: 3.8+](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://www.python.org/)
+[![Python: 3.10+](https://img.shields.io/badge/Python-3.10+-blue.svg)](https://www.python.org/)
 
 ---
 
@@ -53,10 +53,10 @@ RooCode Plus 在 Roo Code 和目标 API 之间做一层请求修正，把这些�
 ### 架构
 
 - 默认只监听 `127.0.0.1:8000`，外网访问不到
-- API Key 通过环境变量 `DEEPSEEK_API_KEY` 读入，源码里不存任何真实密钥
+- API Key 通过环境变量 `DEEPSEEK_API_KEY` 读入，源码里不存任何真实密钥（默认值为空字符串）
 - 请求直连 `api.deepseek.com`，中间不经过任何第三方
 - 不存请求/响应内容。`proxy.log` 只记连接状态，不写对话正文
-- 三个依赖：fastapi、httpx、uvicorn，没有隐藏的第四方包
+- 三个依赖（见 `requirements.txt`）：fastapi、httpx、uvicorn，没有隐藏的第四方包
 
 ### 自检方法
 
@@ -65,7 +65,8 @@ clone 下来之后自己跑两条命令确认：
 ```bash
 # 确认代码里没有硬编码密钥
 grep -n "sk-" proxy_server.py
-# 唯一输出是第 9 行的中文占位符，不是真实 key
+# 仅匹配注释行（如 export DEEPSEEK_API_KEY="sk-xxx"），不是真实 key
+# 实际代码中 API_KEY 默认值为空字符串
 
 # 确认没监听公网
 grep "host=" proxy_server.py
@@ -179,7 +180,7 @@ Key 相当于密码，别发群里，别截图给别人。别人拿到就能用�
 python3 --version
 ```
 
-应该看到 `Python 3.10.12` 或类似的东西。数字低于 3.8 的话去 [python.org](https://www.python.org/downloads/) 下载安装。
+应该看到 `Python 3.10.12` 或类似的东西。数字低于 3.10 的话去 [python.org](https://www.python.org/downloads/) 下载安装。
 
 上面的 `bash` 只是标记「这是终端命令」，不用打这三个字母。只输入 `python3 --version` 然后回车。
 
@@ -226,7 +227,7 @@ source venv/bin/activate
 #### 安装依赖
 
 ```bash
-pip install fastapi httpx uvicorn
+pip install -r requirements.txt
 ```
 
 会看到进度条在跑，最后出现 `Successfully installed ...` 就对了。
@@ -261,14 +262,14 @@ export DEEPSEEK_API_KEY="sk-你的真实密钥"
 
 ## 专业用户快速上手
 
-要求：Python >= 3.8，Linux / macOS / Windows (WSL)。
+要求：Python >= 3.10，Linux / macOS / Windows (WSL)。
 
 ```bash
 git clone https://github.com/Tensor-0/roocode-plus.git
 cd roocode-plus
 python3 -m venv venv
 source venv/bin/activate
-pip install fastapi httpx uvicorn
+pip install -r requirements.txt
 export DEEPSEEK_API_KEY="sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 ./start_proxy.sh
 ```
@@ -362,13 +363,13 @@ Roo Code  ---请求--->  RooCode Plus (127.0.0.1:8000)  ---修正后--->  目标
 
 ```bash
 unset http_proxy https_proxy all_proxy
-pip install fastapi httpx uvicorn
+pip install -r requirements.txt
 ```
 
 在国内没开代理：
 
 ```bash
-pip install -i https://pypi.tuna.tsinghua.edu.cn/simple fastapi httpx uvicorn
+pip install -i https://pypi.tuna.tsinghua.edu.cn/simple -r requirements.txt
 ```
 
 ### 6. Roo Code 连不上代理
@@ -466,7 +467,7 @@ cd ~/roocode-plus
 ls venv/bin/activate      # 确认文件在不在
 python3 -m venv venv      # 不在就创建
 source venv/bin/activate
-pip install fastapi httpx uvicorn
+pip install -r requirements.txt
 ```
 
 ### 13. DNS 解析失败
@@ -507,8 +508,9 @@ tail -f ~/roocode-plus/proxy.log
 
 ```
 roocode-plus/
-├── proxy_server.py    # 适配核心
-├── start_proxy.sh     # 启动脚本
+├── proxy_server.py     # 适配核心
+├── start_proxy.sh      # 启动脚本
+├── requirements.txt    # Python 依赖声明
 ├── .gitignore
 ├── .clinerules
 └── README.md
@@ -518,22 +520,44 @@ roocode-plus/
 
 ## 贡献新模型适配器
 
-`proxy_server.py` 的 `apply_model_patches()` 函数设计为可扩展的。加新适配：
+`proxy_server.py` 的 `apply_model_patches()` 函数设计为可扩展的。适配器通过 `CURRENT_MODEL_PREFIX` 常量匹配模型名，仅对目标模型注入参数。
+
+加新适配只需三步：
+
+1. 在 `apply_model_patches()` 中添加模型检测分支
+2. 更新 `TARGET_URL` 指向新模型的 API 端点
+3. 设置对应的环境变量读取新模型的 API Key
+
+示例：添加 Claude 适配
 
 ```python
+# 1. 修改 CURRENT_MODEL_PREFIX（或改为运行时判断）
+CURRENT_MODEL_PREFIX = "claude"  # 或同时支持多个前缀
+
+# 2. 在 apply_model_patches() 中添加分支
 def apply_model_patches(body: dict) -> dict:
-    # ... 现有 DeepSeek 逻辑 ...
+    model = body.get("model", "")
 
-    # Claude 适配
-    # body["anthropic_version"] = "2023-06-01"
+    if "deepseek" in model.lower():
+        body.setdefault("thinking", {"type": "enabled"})
+        body.setdefault("reasoning_effort", "high")
 
-    # Gemini 适配
-    # body["safety_settings"] = [...]
+    elif "claude" in model.lower():
+        body["anthropic_version"] = "2023-06-01"
+        body.setdefault("max_tokens", 4096)
 
+    elif "gemini" in model.lower():
+        body.setdefault("safety_settings", [])
+
+    # ... 通用修复逻辑 ...
     return body
+
+# 3. 更新 TARGET_URL 和 API_KEY
+TARGET_URL = "https://api.anthropic.com/v1/messages"
+API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 ```
 
-同步更新 `TARGET_URL` 和环境变量读取逻辑。
+更多模型支持计划见上方[适配路线图](#适配路线图)。
 
 ---
 

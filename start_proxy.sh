@@ -22,7 +22,7 @@ if [ ! -d "venv" ]; then
     echo "请先依次执行以下命令完成环境配置："
     echo "  1)  python3 -m venv venv"
     echo "  2)  source venv/bin/activate"
-    echo "  3)  pip install fastapi httpx uvicorn"
+    echo "  3)  pip install -r requirements.txt"
     echo ""
     echo "然后配置你的 API Key："
     echo "  4)  export DEEPSEEK_API_KEY=\"你的真实API_KEY写在这里\""
