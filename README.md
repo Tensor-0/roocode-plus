@@ -49,7 +49,7 @@ Roo Code 是一个强大的 AI 编程助手前端，但当你切换不同模型�
 ### 1. 克隆仓库
 
 ```bash
-git clone https://github.com/你的用户名/roocode-plus.git
+git clone https://github.com/Tensor-0/roocode-plus.git
 cd roocode-plus
 ```
 
