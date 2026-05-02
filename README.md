@@ -54,7 +54,7 @@ RooCode Plus 在 Roo Code 和目标 API 之间做一层请求修正，把这些�
 ### 架构
 
 - 默认只监听 `127.0.0.1:8000`，外网访问不到
-- API Key 通过环境变量 `DEEPSEEK_API_KEY` 读入，源码里不存任何真实密钥（默认值为空字符串）
+- API Key 保存在项目内的 `.env` 文件中，由 [`start_proxy.sh`](start_proxy.sh) 自动加载。`.env` 已被 `.gitignore` 排除，不会被提交到 GitHub
 - 请求直连 `api.deepseek.com`，中间不经过任何第三方
 - 不存请求/响应内容。`proxy.log` 只记连接状态，不写对话正文
 - 三个依赖（见 `requirements.txt`）：fastapi、httpx、uvicorn，没有隐藏的第四方包
@@ -77,7 +77,7 @@ grep "host=" proxy_server.py
 ### Key 流经路径
 
 ```
-环境变量 DEEPSEEK_API_KEY  ->  os.environ.get()  ->  Authorization Header  ->  api.deepseek.com
+.env 文件  →  source .env  →  os.environ.get()  →  Authorization Header  →  api.deepseek.com
 ```
 
 全程 Key 不写入磁盘，不发第三方，不出日志。
@@ -207,41 +207,34 @@ cd roocode-plus
 
 进入刚下载的文件夹。
 
-#### 创建虚拟环境
+### 一键安装
 
-虚拟环境是给这个项目划的独立空间，里面装的东西不影响电脑上其他程序。
-
-```bash
-python3 -m venv venv
-```
-
-执行完可能什么都没显示，正常的。
-
-#### 进入虚拟环境
+就一行：
 
 ```bash
-source venv/bin/activate
+bash install.sh
 ```
 
-执行后终端前面会出现 `(venv)`。Windows 用户命令不同：`venv\Scripts\activate`。
+脚本会自动帮你完成以下事情：
+1. 检查 Python 版本（需要 3.10+）
+2. 创建虚拟环境
+3. 安装依赖包
+4. 让你输入 DeepSeek API Key，保存到项目里
+5. 问你要不要添加 `roocode` 别名（建议同意）
 
-#### 安装依赖
+安装过程中唯一需要你操作的就是输入 API Key（那串 `sk-` 开头的东西）。Key 在哪拿？看[获取 DeepSeek API Key](#获取-deepseek-api-key)。
+
+### 启动
+
+如果你在安装时同意添加了别名，以后任何时候在终端输入：
 
 ```bash
-pip install -r requirements.txt
+roocode
 ```
 
-会看到进度条在跑，最后出现 `Successfully installed ...` 就对了。
+就启动了。四个字符，不需要 cd，不需要激活 venv，不需要输 Key。
 
-#### 设置 API Key
-
-```bash
-export DEEPSEEK_API_KEY="sk-你的真实密钥"
-```
-
-把 `sk-你的真实密钥` 换成你的真实 Key。Key 是在 [platform.deepseek.com](https://platform.deepseek.com/) 的 API Keys 页面拿的，拿到没有的话先看上面的[获取 API Key 章节](#获取-deepseek-api-key)。
-
-#### 启动
+如果没加别名，在项目目录下：
 
 ```bash
 ./start_proxy.sh
@@ -257,7 +250,7 @@ export DEEPSEEK_API_KEY="sk-你的真实密钥"
        监听地址: http://127.0.0.1:8000/v1/chat/completions
 ```
 
-启动了。终端别关，去看 [Roo Code 配置指南](#roo-code-配置指南)。
+启动了。去看 [Roo Code 配置指南](#roo-code-配置指南)。
 
 ---
 
@@ -265,17 +258,28 @@ export DEEPSEEK_API_KEY="sk-你的真实密钥"
 
 要求：Python >= 3.10，Linux / macOS / Windows (WSL)。
 
+**推荐方式（一行安装，支持 `roocode` 别名）：**
+
+```bash
+git clone https://github.com/Tensor-0/roocode-plus.git && cd roocode-plus && bash install.sh
+```
+
+安装脚本会交互式引导输入 API Key（保存到 `.env`），并可选添加 `roocode` 别名。之后启动只需：
+
+```bash
+roocode
+```
+
+**手动方式：**
+
 ```bash
 git clone https://github.com/Tensor-0/roocode-plus.git
 cd roocode-plus
 python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-export DEEPSEEK_API_KEY="sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+venv/bin/pip install -r requirements.txt
+echo 'DEEPSEEK_API_KEY=sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx' > .env
 ./start_proxy.sh
 ```
-
-想持久化 Key 的话把 export 写入 `~/.bashrc` 或 `~/.zshrc`。
 
 ---
 
@@ -316,129 +320,42 @@ Roo Code  ---请求--->  RooCode Plus (127.0.0.1:8000)  ---修正后--->  目标
 
 ## 再次运行指南
 
-退出终端或关机后，代理进程就结束了——它在后台跑，终端一关进程就没了。下次要用的时候需要重新启动。
+退出终端或关机后，代理进程就结束了。下次用时重新启动即可——虚拟环境和配置都在，不用重新装。
 
-好消息是：虚拟环境和依赖只装一次，不用再装。Roo Code 里的配置也不用改。只需要重新启动代理。
+### 如果有别名（推荐）
 
-### 零基础用户
-
-如果你之前是跟着[零基础教程](#零基础教程)一步步来的，现在重新启动只需要这些步骤：
-
-**第一步：打开终端**
-
-VS Code 里按 `` Ctrl+` ``（ESC 下面那个键），底部弹出终端窗口。
-
-**第二步：进入项目文件夹**
+安装时添加了 `roocode` 别名的用户，打开任意终端，输入：
 
 ```bash
-cd ~/roocode-plus
+roocode
 ```
 
-**第三步：激活虚拟环境**
+四个字符，搞定。
+
+（如果提示 `command not found: roocode`，执行 `source ~/.bashrc` 或 `source ~/.zshrc` 使别名生效。）
+
+### 如果没有别名
+
+打开终端，进入项目目录启动：
 
 ```bash
-source venv/bin/activate
+cd ~/roocode-plus && ./start_proxy.sh
 ```
 
-终端前面出现 `(venv)` 就说明成功了。这一步是告诉电脑：「我要用这个项目专属的环境」。
+`start_proxy.sh` 会自动加载 `.env` 中的 Key 并使用虚拟环境的 Python，不需要手动 `export` 或 `source venv/bin/activate`。
 
-**第四步：设置 API Key**
+### 忘了 API Key？
+
+Key 保存在项目里的 `.env` 文件中。查看：
 
 ```bash
-export DEEPSEEK_API_KEY="sk-你的真实密钥"
+cat ~/roocode-plus/.env
 ```
 
-如果你已经把 Key 写入了 `~/.bashrc`（见下方[持久化 API Key](#持久化-api-key不想每次重输)），跳过这步——激活虚拟环境后 Key 已经在环境中了。
-
-**第五步：启动代理**
+如果 `.env` 不存在或 Key 不对，重新运行安装脚本即可：
 
 ```bash
-./start_proxy.sh
-```
-
-看到：
-
-```text
-[成功] RooCode Plus 已在后台启动！PID: 12345
-       监听地址: http://127.0.0.1:8000/v1/chat/completions
-```
-
-就完成了。现在切回 Roo Code 聊天面板，直接继续对话。
-
----
-
-**如果你忘了 API Key 是什么：**
-- Key 是在 [platform.deepseek.com](https://platform.deepseek.com/) 的 API Keys 页面创建的
-- 如果找不到原来的 Key，登上去「API Keys」页面，删掉旧的，创建一个新的
-
----
-
-### 专业用户
-
-如果 Key 已写入 `~/.bashrc` 或 `~/.zshrc`：
-
-```bash
-cd ~/roocode-plus && source venv/bin/activate && ./start_proxy.sh
-```
-
-如果 Key 没持久化，需要先 export：
-
-```bash
-cd ~/roocode-plus
-source venv/bin/activate
-export DEEPSEEK_API_KEY="sk-你的真实密钥"
-./start_proxy.sh
-```
-
----
-
-### 持久化 API Key（不想每次重输）
-
-每次重新输 Key 很麻烦。一次设好，以后打开终端 Key 自动生效。
-
-**方法一：写入 shell 配置文件（推荐）**
-
-打开终端（确保不在任何虚拟环境里），执行：
-
-```bash
-echo 'export DEEPSEEK_API_KEY="sk-你的真实密钥"' >> ~/.bashrc
-source ~/.bashrc
-```
-
-注意：如果你用的是 zsh（终端标题栏有 zsh 字样），把 `~/.bashrc` 换成 `~/.zshrc`。
-
-**怎么判断用的是 bash 还是 zsh？** 终端里输入：
-
-```bash
-echo $SHELL
-```
-
-输出 `/bin/bash` 就是 bash，输出 `/bin/zsh` 就是 zsh。
-
-以后每次打开新终端，Key 自动生效，启动代理前不需要再 export 了。直接用：
-
-```bash
-cd ~/roocode-plus && source venv/bin/activate && ./start_proxy.sh
-```
-
-**方法二：创建 .env 文件（隔离在项目内）**
-
-如果你不想把 Key 写到全局配置文件里，可以只在项目文件夹里放一个 `.env` 文件：
-
-```bash
-cd ~/roocode-plus
-echo 'DEEPSEEK_API_KEY=sk-你的真实密钥' > .env
-```
-
-`.env` 已经在 `.gitignore` 中，不会被提交到 GitHub。
-
-启动前需要手动加载：
-
-```bash
-cd ~/roocode-plus
-source .env
-source venv/bin/activate
-./start_proxy.sh
+cd ~/roocode-plus && bash install.sh
 ```
 
 ---
@@ -469,10 +386,10 @@ source venv/bin/activate
 
 | 漏了哪步 | 出错的命令 | 补上 |
 |---|---|---|
-| `cd roocode-plus` | start_proxy.sh 找不到 | `cd ~/roocode-plus` |
-| `python3 -m venv venv` | source activate 失败 | 回去创建 venv |
-| `source venv/bin/activate` | pip 装到了系统层 | 先执行 activate |
-| `pip install ...` | 启动报缺少模块 | 先 pip install |
+| 没运行安装脚本 | start_proxy.sh 找不到或 venv 缺失 | `bash install.sh` |
+| 安装时没输入 Key | API 返回 401 | 重新运行 `bash install.sh` |
+
+如果之前是手动安装出问题，直接跑 `bash install.sh` 即可——它会检测已有 venv 并跳过重复步骤，只让你补上 API Key。
 
 ### 4. 看错命令了
 
@@ -509,7 +426,7 @@ pip install -i https://pypi.tuna.tsinghua.edu.cn/simple -r requirements.txt
 ```
 [1] 代理还在运行吗？
     ps aux | grep proxy_server
-    没输出就是挂了，重新启动（见再次运行指南）
+    没输出就是挂了，重新启动：roocode 或 ./start_proxy.sh
 
 [2] Base URL 对吗？
     http://127.0.0.1:8000/v1
@@ -526,15 +443,13 @@ pip install -i https://pypi.tuna.tsinghua.edu.cn/simple -r requirements.txt
 
 `[API 报错] 状态码: 401`
 
-Key 没设对。
+Key 没设对。检查 `.env` 文件：
 
 ```bash
-echo $DEEPSEEK_API_KEY
-# 如果是空的或"你的真实API_KEY写在这里"，重新设：
-export DEEPSEEK_API_KEY="sk-你的真实密钥"
-# 然后重启代理
-kill $(ps aux | grep proxy_server | grep -v grep | awk '{print $2}')
-./start_proxy.sh
+cat ~/roocode-plus/.env
+# 如果 Key 不对，重新运行安装脚本设置：
+cd ~/roocode-plus && bash install.sh
+# 然后重启代理：roocode
 ```
 
 检查 Key 里是不是混了空格。
@@ -549,7 +464,19 @@ kill $(ps aux | grep proxy_server | grep -v grep | awk '{print $2}')
 
 ### 9. 电脑关机后连不上了
 
-这是正常的——代理进程关机会结束。重新启动的完整步骤见[再次运行指南](#再次运行指南)。虚拟环境和 Roo Code 配置都在，不用重新装。
+这是正常的——代理进程关机会结束。重新启动：
+
+```bash
+roocode
+```
+
+如果没加别名：
+
+```bash
+cd ~/roocode-plus && ./start_proxy.sh
+```
+
+虚拟环境和 Roo Code 配置都在，不用重新装。
 
 ### 10. 端口被占用
 
@@ -572,19 +499,41 @@ kill $(lsof -t -i:8000) 2>/dev/null
 chmod +x start_proxy.sh
 ```
 
-### 12. 虚拟环境找不到
+### 12. roocode 别名无效
+
+`command not found: roocode`
+
+新添加的别名需要重新加载 shell 配置才能生效：
+
+```bash
+source ~/.bashrc   # 如果用 bash
+source ~/.zshrc    # 如果用 zsh
+```
+
+如果还是不行，确认别名已添加：
+
+```bash
+grep roocode ~/.bashrc ~/.zshrc 2>/dev/null
+```
+
+没有输出的话手动添加：
+
+```bash
+echo "alias roocode='cd ~/roocode-plus && ./start_proxy.sh'" >> ~/.bashrc
+source ~/.bashrc
+```
+
+### 13. 虚拟环境找不到
 
 启动脚本提示 `[错误] 未检测到 Python 虚拟环境`
 
+直接运行安装脚本，它会自动创建：
+
 ```bash
-cd ~/roocode-plus
-ls venv/bin/activate      # 确认文件在不在
-python3 -m venv venv      # 不在就创建
-source venv/bin/activate
-pip install -r requirements.txt
+bash install.sh
 ```
 
-### 13. DNS 解析失败
+### 14. DNS 解析失败
 
 `[API 报错] ... Name or service not known`
 
@@ -596,11 +545,11 @@ curl -I https://api.deepseek.com
 
 如果不通，检查代理设置（参考故障 5）。在国内没开代理的话 DeepSeek API 可能被墙。
 
-### 14. Roo Code 找不到配置项
+### 15. Roo Code 找不到配置项
 
 Roo Code 版本太旧或者界面布局有差异。先更新 VS Code 和 Roo Code 扩展。核心原则不变：找 Provider 设置 -> 选 OpenAI Compatible -> 填 Base URL 和 Model ID。
 
-### 15. 配置完 Roo Code 没反应
+### 16. 配置完 Roo Code 没反应
 
 发消息后没输出也没报错。
 
@@ -622,9 +571,10 @@ tail -f ~/roocode-plus/proxy.log
 
 ```
 roocode-plus/
-├── proxy_server.py     # 适配核心
-├── start_proxy.sh      # 启动脚本
-├── requirements.txt    # Python 依赖声明
+├── install.sh           # 一键安装脚本（创建 venv、安装依赖、配置 Key、添加别名）
+├── start_proxy.sh       # 启动脚本（自动加载 .env，无需激活 venv）
+├── proxy_server.py      # 适配核心
+├── requirements.txt     # Python 依赖声明
 ├── .gitignore
 ├── .clinerules
 └── README.md

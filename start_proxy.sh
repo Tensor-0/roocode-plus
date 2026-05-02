@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 #
 # RooCode Plus — 启动脚本
-# 用法: ./start_proxy.sh
+# 用法: ./start_proxy.sh  或  roocode（安装别名后）
+#
+# 自动加载 .env 中的 API Key，无需手动 export 或激活 venv。
 #
 
 set -e
@@ -14,44 +16,43 @@ echo "============================================"
 echo "  RooCode Plus — Multi-Model Adapter"
 echo "============================================"
 
-# ---------- 环境检测 ----------
+# ---------- 1. 自动加载 .env ----------
+if [ -f ".env" ]; then
+    set -a
+    source .env
+    set +a
+fi
+
+# ---------- 2. 环境检测 ----------
 if [ ! -d "venv" ]; then
     echo ""
     echo "[错误] 未检测到 Python 虚拟环境 (venv/)！"
     echo ""
-    echo "请先依次执行以下命令完成环境配置："
-    echo "  1)  python3 -m venv venv"
-    echo "  2)  source venv/bin/activate"
-    echo "  3)  pip install -r requirements.txt"
-    echo ""
-    echo "然后配置你的 API Key："
-    echo "  4)  export DEEPSEEK_API_KEY=\"你的真实API_KEY写在这里\""
-    echo ""
-    echo "配置完成后，再次运行 ./start_proxy.sh 即可启动。"
+    echo "请先运行安装脚本："
+    echo "  bash install.sh"
     echo ""
     exit 1
 fi
 
-# ---------- 检查 API Key ----------
+# ---------- 3. 检查 API Key ----------
 if [ -z "$DEEPSEEK_API_KEY" ] || [ "$DEEPSEEK_API_KEY" = "你的真实API_KEY写在这里" ]; then
     echo ""
-    echo "[警告] 未设置有效的 DEEPSEEK_API_KEY 环境变量！"
+    echo "[警告] 未设置有效的 DEEPSEEK_API_KEY！"
     echo ""
     echo "请通过以下方式之一设置："
-    echo "  export DEEPSEEK_API_KEY=\"sk-xxxxxxxxxxxxxxxx\""
-    echo "  或创建 .env 文件并在启动前 source .env"
+    echo "  1) 运行安装脚本: bash install.sh"
+    echo "  2) 手动创建 .env: echo 'DEEPSEEK_API_KEY=sk-xxx' > .env"
+    echo "  3) 环境变量:     export DEEPSEEK_API_KEY=\"sk-xxx\""
     echo ""
     echo "继续启动中（若未设置 Key，API 调用将会失败）..."
     echo ""
 fi
 
-# ---------- 启动代理 ----------
-echo "[启动] 正在激活虚拟环境并启动适配代理..."
+# ---------- 4. 启动代理 ----------
+echo "[启动] 正在启动适配代理..."
 echo ""
 
-source venv/bin/activate
-
-nohup python proxy_server.py > proxy.log 2>&1 &
+nohup ./venv/bin/python proxy_server.py > proxy.log 2>&1 &
 
 PID=$!
 echo "[成功] RooCode Plus 已在后台启动！PID: $PID"
