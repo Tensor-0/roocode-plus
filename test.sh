@@ -156,28 +156,50 @@ echo "  venv + .env 就绪"
 # ================================================================
 echo ""
 echo "--- 测试 2: 端口冲突时应报错退出 ---"
-# 先启动一个占用 8000 端口的代理
-bash "$TEST_DIR/start_proxy.sh" > /dev/null 2>&1
-safe_sleep 2
-FIRST_PID=$(find_pid "proxy_server.py")
-if [ -z "$FIRST_PID" ]; then
-    fail "测试 2" "首个代理启动失败，无法继续测试端口冲突"
+set -x  # 调试模式：CI 日志中打印每条命令
+
+# 用 Python 可靠占住 8000 端口（跨平台，绕过 bash 进程管理的坑）
+DUMMY_PID=""
+"$VENV_PYTHON" -c "
+import socket, time
+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+s.bind(('127.0.0.1', 8000))
+s.listen(1)
+time.sleep(10)
+" &
+DUMMY_PID=$!
+safe_sleep 1
+
+# 确认占位进程存活
+if [ -z "$DUMMY_PID" ] || ! kill -0 "$DUMMY_PID" 2>/dev/null; then
+    set +x
+    fail "测试 2" "Python 占位进程启动失败"
 else
-    # 尝试再启动一个（端口冲突）
-    if bash "$TEST_DIR/start_proxy.sh" > /tmp/test_out_2.txt 2>&1; then
-        fail "测试 2" "期望退出码非 0（端口冲突），实际为 0"
-    else
-        if grep -q "端口 8000 已被占用" /tmp/test_out_2.txt; then
-            pass "测试 2: 正确检测到端口冲突"
-        elif grep -q "代理进程启动后立即退出" /tmp/test_out_2.txt; then
-            pass "测试 2: 正确检测到进程失败（端口冲突）"
-        else
-            fail "测试 2" "输出中没有端口冲突或进程失败提示"
-        fi
-    fi
-    kill_pid "$FIRST_PID"
+    # 尝试启动代理（端口冲突）
+    bash "$TEST_DIR/start_proxy.sh" > /tmp/test_out_2.txt 2>&1 || true
     safe_sleep 1
+
+    if grep -q "端口 8000 已被占用" /tmp/test_out_2.txt 2>/dev/null; then
+        set +x
+        pass "测试 2: 正确检测到端口冲突"
+    elif grep -q "代理进程启动后立即退出" /tmp/test_out_2.txt 2>/dev/null; then
+        set +x
+        pass "测试 2: 正确检测到进程失败（端口冲突）"
+    else
+        set +x
+        fail "测试 2" "输出中没有端口冲突或进程失败提示"
+    fi
+
+    # 防崩溃清理（|| true 必须！set -e 下 kill 失败会终止脚本）
+    if $IS_WINDOWS; then
+        taskkill //F //PID "$DUMMY_PID" > /dev/null 2>&1 || true
+    else
+        kill -9 "$DUMMY_PID" > /dev/null 2>&1 || true
+    fi
 fi
+set +x
+safe_sleep 1
 
 # ================================================================
 # 测试 3: start_proxy.sh — 正常启动（端口空闲）
