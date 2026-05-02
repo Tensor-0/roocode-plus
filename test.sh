@@ -3,8 +3,9 @@
 # RooCode Plus — 自动化测试脚本
 # 用法: bash test.sh
 #
-# 在 /tmp 隔离环境中运行，不影响当前项目。
+# 在临时隔离环境中运行，不影响当前项目。
 # 覆盖 install.sh 和 start_proxy.sh 的 happy path + 常见错误场景。
+# 支持 Ubuntu、macOS、Windows (Git Bash) 三平台。
 #
 
 set -e
@@ -20,10 +21,66 @@ FAIL=0
 pass() { echo -e "  ${GREEN}✓ PASS${NC} $1"; PASS=$((PASS + 1)); }
 fail() { echo -e "  ${RED}✗ FAIL${NC} $1 — $2"; FAIL=$((FAIL + 1)); }
 
+# ---------- 跨平台工具函数 ----------
+
+# 检测操作系统
+IS_WINDOWS=false
+case "$(uname -s)" in
+    MINGW*|MSYS*|CYGWIN*) IS_WINDOWS=true ;;
+esac
+
+# 跨平台进程查找：根据命令行关键字返回 PID
+find_pid() {
+    local keyword="$1"
+    if $IS_WINDOWS; then
+        # Windows: 用 tasklist + 管道查找 python 进程（关键字匹配靠人工判断，这里取所有 python.exe）
+        # 精确匹配：用 WMIC 查命令行
+        local pids
+        pids=$(tasklist //FI "IMAGENAME eq python.exe" //FO CSV //NH 2>/dev/null | cut -d, -f2 | tr -d '"' | tr -d ' ')
+        # 遍历 PID，用 wmic 检查命令行中是否含有关键字
+        for pid in $pids; do
+            if wmic process where "ProcessId=$pid" get CommandLine 2>/dev/null | grep -q "$keyword"; then
+                echo "$pid"
+                return 0
+            fi
+        done
+        return 1
+    else
+        # Unix: 用 ps + grep
+        ps aux | grep "$keyword" | grep -v grep | awk '{print $2}' | head -1
+    fi
+}
+
+# 跨平台杀进程
+kill_pid() {
+    local pid="$1"
+    if [ -z "$pid" ]; then
+        return 0
+    fi
+    if $IS_WINDOWS; then
+        taskkill //F //PID "$pid" >/dev/null 2>&1 || true
+    else
+        kill "$pid" 2>/dev/null || true
+    fi
+}
+
+# 跨平台 chmod（Windows 跳过）
+safe_chmod() {
+    if $IS_WINDOWS; then
+        return 0
+    fi
+    chmod "$@"
+}
+
+# 跨平台 sleep（确保参数被接受）
+safe_sleep() {
+    sleep "$1" 2>/dev/null || sleep 1
+}
+
 cleanup() {
     # 杀掉测试中启动的代理进程
-    if [ -n "$TEST_PID" ] && kill -0 "$TEST_PID" 2>/dev/null; then
-        kill "$TEST_PID" 2>/dev/null || true
+    if [ -n "$TEST_PID" ]; then
+        kill_pid "$TEST_PID"
     fi
     rm -rf "$TEST_DIR"
 }
@@ -32,6 +89,9 @@ trap cleanup EXIT
 echo "============================================"
 echo "  RooCode Plus — 自动化测试"
 echo "============================================"
+if $IS_WINDOWS; then
+    echo "  [平台: Windows (Git Bash)]"
+fi
 echo ""
 
 # ---------- 环境准备 ----------
@@ -41,10 +101,12 @@ echo "[准备] 创建隔离测试环境: $TEST_DIR"
 echo "[准备] 从 $SCRIPT_DIR 复制项目文件..."
 mkdir -p "$TEST_DIR"
 cp -r "$SCRIPT_DIR"/* "$TEST_DIR/"
-# .git 目录太大，不复制（测试用不到）；.vscode 也不复制
 rm -rf "$TEST_DIR/.git" "$TEST_DIR/.vscode"
 cd "$TEST_DIR"
-chmod +x install.sh start_proxy.sh
+# Windows 下不需要 chmod +x
+if ! $IS_WINDOWS; then
+    chmod +x install.sh start_proxy.sh
+fi
 
 echo ""
 
@@ -86,7 +148,7 @@ else
     "$VENV_PIP" install -r requirements.txt -q 2>&1
 fi
 echo "DEEPSEEK_API_KEY=sk-test-fake-key-123" > .env
-chmod 600 .env
+safe_chmod 600 .env
 echo "  venv + .env 就绪"
 
 # ================================================================
@@ -96,8 +158,8 @@ echo ""
 echo "--- 测试 2: 端口冲突时应报错退出 ---"
 # 先启动一个占用 8000 端口的代理
 bash "$TEST_DIR/start_proxy.sh" > /dev/null 2>&1
-sleep 1
-FIRST_PID=$(pgrep -f "proxy_server.py" | grep -v grep | head -1 || true)
+safe_sleep 2
+FIRST_PID=$(find_pid "proxy_server.py")
 if [ -z "$FIRST_PID" ]; then
     fail "测试 2" "首个代理启动失败，无法继续测试端口冲突"
 else
@@ -107,17 +169,14 @@ else
     else
         if grep -q "端口 8000 已被占用" /tmp/test_out_2.txt; then
             pass "测试 2: 正确检测到端口冲突"
+        elif grep -q "代理进程启动后立即退出" /tmp/test_out_2.txt; then
+            pass "测试 2: 正确检测到进程失败（端口冲突）"
         else
-            # 兼容输出中的失败提示
-            if grep -q "代理进程启动后立即退出" /tmp/test_out_2.txt; then
-                pass "测试 2: 正确检测到进程失败（端口冲突）"
-            else
-                fail "测试 2" "输出中没有端口冲突或进程失败提示"
-            fi
+            fail "测试 2" "输出中没有端口冲突或进程失败提示"
         fi
     fi
-    kill "$FIRST_PID" 2>/dev/null || true
-    sleep 1
+    kill_pid "$FIRST_PID"
+    safe_sleep 1
 fi
 
 # ================================================================
@@ -126,12 +185,16 @@ fi
 echo ""
 echo "--- 测试 3: 正常启动 ---"
 if bash "$TEST_DIR/start_proxy.sh" > /tmp/test_out_3.txt 2>&1; then
-    TEST_PID=$(pgrep -f "proxy_server.py" | grep -v grep | head -1 || true)
+    safe_sleep 1
+    TEST_PID=$(find_pid "proxy_server.py")
     if [ -n "$TEST_PID" ]; then
         pass "测试 3: 代理正常启动 (PID=$TEST_PID)"
     else
         fail "测试 3" "脚本返回成功但进程未找到"
     fi
+    # 清除本测试进程
+    kill_pid "$TEST_PID"
+    safe_sleep 1
 else
     fail "测试 3" "期望退出码 0，实际为非 0"
     cat /tmp/test_out_3.txt
@@ -142,7 +205,6 @@ fi
 # ================================================================
 echo ""
 echo "--- 测试 4: install.sh .env 已存在时跳过 ---"
-# 用交互式管道：先选不覆盖 (n)，然后选不加别名 (n)
 printf 'n\nn\n' | bash "$TEST_DIR/install.sh" > /tmp/test_out_4.txt 2>&1
 if grep -q "sk-test-fake-key-123" "$TEST_DIR/.env"; then
     pass "测试 4: 原有 .env 内容未被覆盖"
