@@ -45,7 +45,7 @@ find_pid() {
         pids=$(tasklist //FI "IMAGENAME eq python.exe" //FO CSV //NH 2>/dev/null | cut -d, -f2 | tr -d '"' | tr -d ' ')
         # 遍历 PID，用 wmic 检查命令行中是否含有关键字
         for pid in $pids; do
-            if wmic process where "ProcessId=$pid" get CommandLine 2>/dev/null | grep -q "$keyword"; then
+            if wmic process where "ProcessId=$pid" get CommandLine 2>/dev/null | tr -d '\000' | grep -q "$keyword"; then
                 echo "$pid"
                 return 0
             fi
@@ -214,7 +214,9 @@ else
     safe_sleep 2
 fi
 set +x
-safe_sleep 1
+# 强制清理残留进程后等待端口释放（测试 2 → 测试 3 过渡）
+taskkill //F //IM python.exe > /dev/null 2>&1 || kill -9 $DUMMY_PID > /dev/null 2>&1 || true
+safe_sleep 2
 
 # ================================================================
 # 测试 3: start_proxy.sh — 正常启动（端口空闲）
@@ -228,6 +230,8 @@ if bash "$TEST_DIR/start_proxy.sh" > /tmp/test_out_3.txt 2>&1; then
     if [ -n "$TEST_PID" ]; then
         pass "测试 3: 代理正常启动 (PID=$TEST_PID)"
     else
+        echo "--- proxy.log 内容 ---"
+        cat "$TEST_DIR/proxy.log" 2>/dev/null || true
         fail "测试 3" "脚本返回成功但进程未找到"
     fi
     set +x
