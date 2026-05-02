@@ -14,11 +14,53 @@ Roo Code 的多模型适配层。解决 Roo Code 切换到不同模型时遇到�
 | 没用过 VS Code，没用过终端，第一次接触 AI 编程 | [零基础教程](#零基础教程) |
 | 还不知道怎么搞到 DeepSeek API Key（没注册、没充值） | [获取 DeepSeek API Key](#获取-deepseek-api-key) |
 | 会用 VS Code 和终端，知道 venv/pip 是什么 | [专业用户快速上手](#专业用户快速上手) |
+| 我是 Windows 用户，没用过 WSL | [各系统用户注意](#各系统用户注意) |
 | 退出终端 / 关机后不知道怎么重新启动 | [再次运行指南](#再次运行指南) |
 | 想了解安全模型，代码有没有埋坑 | [安全性说明](#安全性说明) |
 | 已经启动了，要在 Roo Code 里配置 | [Roo Code 配置指南](#roo-code-配置指南) |
 | 出错了 | [故障排除](#故障排除) |
 | 想了解项目文件是干什么的 | [项目文件架构](#项目文件架构) |
+
+---
+
+## 各系统用户注意
+
+本项目支持 Linux、macOS、Windows（通过 Git Bash）三个平台，但部分操作在不同系统上有差异。以下是你需要知道的：
+
+### Windows 用户
+
+**必须安装 Git Bash。** Windows 自带的命令提示符（cmd）和 PowerShell 不能运行本项目的脚本。
+
+1. 去 [git-scm.com](https://git-scm.com/downloads/win) 下载 Git for Windows
+2. 安装时一路默认选项即可
+3. 安装完成后，在 VS Code 里按 `` Ctrl+` `` 打开终端，点击终端右上角的下拉箭头，选择「Git Bash」
+4. 之后的所有命令都在 Git Bash 里输入
+
+**别名不生效？** Windows 下 `roocode` 别名需要添加到 `~/.bashrc`（Git Bash 会自动加载），或者在 Git Bash 里输入 `source ~/.bashrc`。
+
+**端口被防火墙拦截？** 首次启动代理时 Windows 可能会弹防火墙提示，必须点「允许」。
+
+### macOS 用户
+
+macOS 默认使用 zsh 而不是 bash。安装脚本会自动检测并写入 `~/.zshrc`。如果 `roocode` 别名不生效：
+
+```bash
+source ~/.zshrc
+```
+
+如果提示 `git: command not found`，终端输入：
+
+```bash
+xcode-select --install
+```
+
+### Linux 用户
+
+如果你的系统缺少 `python3-venv` 包（Ubuntu/Debian 常见），在运行安装脚本之前先执行：
+
+```bash
+sudo apt install python3-venv -y
+```
 
 ---
 
@@ -174,6 +216,8 @@ Key 相当于密码，别发群里，别截图给别人。别人拿到就能用�
 
 你会看到类似 `user@computer:~$` 的东西，光标在 `$` 后面闪，等着你输入。
 
+> **Windows 用户：** 确保终端右上角显示的是「Git Bash」而不是「PowerShell」。如果显示 PowerShell，点下拉箭头切换到 Git Bash。还没装 Git Bash？看[各系统用户注意](#各系统用户注意)。
+
 #### 确认有 Python
 
 在终端里输入：
@@ -185,6 +229,8 @@ python3 --version
 应该看到 `Python 3.10.12` 或类似的东西。数字低于 3.10 的话去 [python.org](https://www.python.org/downloads/) 下载安装。
 
 上面的 `bash` 只是标记「这是终端命令」，不用打这三个字母。只输入 `python3 --version` 然后回车。
+
+> **Linux 用户：** 如果提示 `python3: command not found`，试试 `python --version`。如果也不行，`sudo apt install python3 -y`（Ubuntu/Debian）或 `sudo yum install python3 -y`（CentOS/Fedora）。
 
 #### 下载项目
 
@@ -225,6 +271,10 @@ bash install.sh
 
 安装过程中唯一需要你操作的就是输入 API Key（那串 `sk-` 开头的东西）。Key 在哪拿？看[获取 DeepSeek API Key](#获取-deepseek-api-key)。
 
+> **macOS 用户：** 安装脚本会自动将别名写入 `~/.zshrc`（macOS 默认用 zsh）。安装完成后执行 `source ~/.zshrc` 使别名立即生效。
+>
+> **Windows 用户：** 别名写入 `~/.bashrc`（Git Bash 的配置文件）。安装完成后执行 `source ~/.bashrc` 使别名生效，或者关闭 Git Bash 重新打开。
+
 ### 启动
 
 如果你在安装时同意添加了别名，以后任何时候在终端输入：
@@ -234,6 +284,11 @@ roocode
 ```
 
 就启动了。四个字符，不需要 cd，不需要激活 venv，不需要输 Key。
+
+> 如果提示 `command not found: roocode`：
+> - **Linux：** `source ~/.bashrc`
+> - **macOS：** `source ~/.zshrc`
+> - **Windows：** `source ~/.bashrc` 或重开 Git Bash
 
 如果没加别名，在项目目录下：
 
@@ -257,7 +312,7 @@ roocode
 
 ## 专业用户快速上手
 
-要求：Python >= 3.10，Linux / macOS / Windows (WSL)。
+要求：Python >= 3.10，Linux / macOS / Windows (Git Bash)。
 
 **推荐方式（一行安装，支持 `roocode` 别名）：**
 
@@ -271,6 +326,8 @@ git clone https://github.com/Tensor-0/roocode-plus.git && cd roocode-plus && bas
 roocode
 ```
 
+> Linux: 别名在 `~/.bashrc` / macOS: 别名在 `~/.zshrc` / Windows: 别名在 `~/.bashrc`（Git Bash）
+
 **手动方式：**
 
 ```bash
@@ -281,6 +338,8 @@ venv/bin/pip install -r requirements.txt
 echo 'DEEPSEEK_API_KEY=sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx' > .env
 ./start_proxy.sh
 ```
+
+> Windows 手动安装时注意：venv 路径是 `venv/Scripts/pip.exe` 和 `venv/Scripts/python.exe`
 
 ---
 
@@ -333,7 +392,7 @@ roocode
 
 四个字符，搞定。
 
-（如果提示 `command not found: roocode`，执行 `source ~/.bashrc` 或 `source ~/.zshrc` 使别名生效。）
+（如果提示 `command not found: roocode`，执行 `source ~/.bashrc`（Linux/Windows Git Bash）或 `source ~/.zshrc`（macOS）使别名生效。）
 
 ### 如果没有别名
 
@@ -492,6 +551,8 @@ kill $(lsof -t -i:8000) 2>/dev/null
 # Roo Code 的 Base URL 跟着改
 ```
 
+> **Windows 用户：** 用 `netstat -ano | findstr 8000` 查看谁占用了端口，然后用 `taskkill //F //PID 进程号` 杀掉。
+
 ### 11. Permission Denied
 
 `bash: ./start_proxy.sh: Permission denied`
@@ -500,6 +561,8 @@ kill $(lsof -t -i:8000) 2>/dev/null
 chmod +x start_proxy.sh
 ```
 
+> **Windows 用户：** Git Bash 下通常不会遇到此问题。如果遇到，用 `bash start_proxy.sh` 替代 `./start_proxy.sh`。
+
 ### 12. roocode 别名无效
 
 `command not found: roocode`
@@ -507,9 +570,11 @@ chmod +x start_proxy.sh
 新添加的别名需要重新加载 shell 配置才能生效：
 
 ```bash
-source ~/.bashrc   # 如果用 bash
-source ~/.zshrc    # 如果用 zsh
+source ~/.bashrc   # Linux / Windows Git Bash
+source ~/.zshrc    # macOS（默认用 zsh）
 ```
+
+**怎么判断自己用的是 bash 还是 zsh？** 终端里输入 `echo $SHELL`。输出 `/bin/bash` 用 `.bashrc`，输出 `/bin/zsh` 用 `.zshrc`。
 
 如果还是不行，确认别名已添加：
 
@@ -520,8 +585,13 @@ grep roocode ~/.bashrc ~/.zshrc 2>/dev/null
 没有输出的话手动添加：
 
 ```bash
+# Linux / Windows Git Bash
 echo "alias roocode='cd ~/roocode-plus && ./start_proxy.sh'" >> ~/.bashrc
 source ~/.bashrc
+
+# macOS
+echo "alias roocode='cd ~/roocode-plus && ./start_proxy.sh'" >> ~/.zshrc
+source ~/.zshrc
 ```
 
 ### 13. 虚拟环境找不到
