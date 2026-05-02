@@ -53,8 +53,25 @@ echo "[启动] 正在启动适配代理..."
 echo ""
 
 nohup ./venv/bin/python proxy_server.py > proxy.log 2>&1 &
-
 PID=$!
+
+# 等待一瞬间，检查进程是否存活（端口冲突等会导致进程立即退出）
+sleep 0.5
+
+if ! kill -0 "$PID" 2>/dev/null; then
+    echo ""
+    echo "============================================"
+    echo "  [失败] 代理进程启动后立即退出！"
+    echo "============================================"
+    echo ""
+    echo "常见原因："
+    echo "  1) 端口 8000 已被占用 — 运行: kill \$(lsof -t -i:8000) 2>/dev/null"
+    echo "  2) Python 依赖缺失     — 运行: bash install.sh"
+    echo "  3) 查看错误详情        — 运行: cat $SCRIPT_DIR/proxy.log"
+    echo ""
+    exit 1
+fi
+
 echo "[成功] RooCode Plus 已在后台启动！PID: $PID"
 echo "       日志文件: $SCRIPT_DIR/proxy.log"
 echo "       监听地址: http://127.0.0.1:8000/v1/chat/completions"
