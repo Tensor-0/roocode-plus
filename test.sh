@@ -10,6 +10,10 @@
 
 set -e
 
+# 强制 Python 使用 UTF-8（解决 Windows cp1252 编码下 emoji/中文崩溃和乱码）
+export PYTHONIOENCODING=utf-8
+export PYTHONUTF8=1
+
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
