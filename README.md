@@ -574,15 +574,15 @@ tail -f ~/roocode-plus/proxy.log
 
 | 分组 | 文件 | 用途 | 你什么时候会碰到它 |
 |------|------|------|---------------------|
-| 🚀 运行核心 | [`proxy_server.py`](proxy_server.py) | FastAPI 适配代理，拦截请求 → 参数修正 → 转发 | 改适配逻辑、加新模型 |
+| 运行核心 | [`proxy_server.py`](proxy_server.py) | FastAPI 适配代理，拦截请求 → 参数修正 → 转发 | 改适配逻辑、加新模型 |
 | | [`start_proxy.sh`](start_proxy.sh) | 一键启动脚本，自动加载 `.env` 和 venv | 每次启动代理（或通过 `roocode` 别名） |
 | | [`install.sh`](install.sh) | 一键安装：Python 检测 → venv → pip → `.env` → 别名 | 第一次配置，或换了电脑 |
-| 📦 依赖声明 | [`requirements.txt`](requirements.txt) | 运行依赖：fastapi、httpx、uvicorn | 手动安装时 `pip install -r` |
+| 依赖声明 | [`requirements.txt`](requirements.txt) | 运行依赖：fastapi、httpx、uvicorn | 手动安装时 `pip install -r` |
 | | [`requirements-dev.txt`](requirements-dev.txt) | 测试依赖：pytest、pytest-httpx、pytest-asyncio | 跑单元测试前 `pip install -r` |
-| 🧪 测试体系 | [`test.sh`](test.sh) | bash 集成测试（/tmp 隔离，4 个场景） | 改了脚本后本地验证 |
+| 测试体系 | [`test.sh`](test.sh) | bash 集成测试（/tmp 隔离，4 个场景） | 改了脚本后本地验证 |
 | | [`test_proxy.py`](test_proxy.py) | pytest 单元测试（13 用例，mock 上游 API） | 改了 `proxy_server.py` 后跑 |
 | | [`.github/workflows/test.yml`](.github/workflows/test.yml) | GitHub Actions CI，三平台自动跑 | push 代码后 GitHub 自动触发 |
-| ⚙️ 工程配置 | [`.gitignore`](.gitignore) | 排除 `venv/`、`.env`、`*.log`、`__pycache__/` | 不会手动碰 |
+| 工程配置 | [`.gitignore`](.gitignore) | 排除 `venv/`、`.env`、`*.log`、`__pycache__/` | 不会手动碰 |
 | | [`.clinerules`](.clinerules) | 本项目代码规范 | 贡献代码时参考 |
 | | [`README.md`](README.md) | 就是本文档 | 任何时候 |
 
@@ -590,28 +590,28 @@ tail -f ~/roocode-plus/proxy.log
 
 ```mermaid
 flowchart LR
-    subgraph 用户["👤 用户"]
+    subgraph 用户["用户"]
         ROO["Roo Code<br/>(VS Code 扩展)"]
         TERM["终端"]
     end
 
-    subgraph 安装["🔧 初次配置（只做一次）"]
+    subgraph 安装["初次配置（只做一次）"]
         INSTALL["install.sh"]
         VENV["venv/"]
         DOTENV[".env<br/>(API Key)"]
     end
 
-    subgraph 运行["🚀 每次启动"]
+    subgraph 运行["每次启动"]
         START["start_proxy.sh<br/>（或 roocode 别名）"]
         PROXY["proxy_server.py<br/>FastAPI :8000"]
         PATCH["apply_model_patches()"]
     end
 
-    subgraph 上游["☁️ 上游 API"]
+    subgraph 上游["上游 API"]
         DS["api.deepseek.com"]
     end
 
-    subgraph 测试["🧪 质量保障"]
+    subgraph 测试["质量保障"]
         TSH["test.sh"]
         TPY["test_proxy.py"]
         CI[".github/workflows<br/>三平台 CI"]
