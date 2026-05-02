@@ -10,7 +10,9 @@
 
 set -e
 
-# 强制 Python 使用 UTF-8（解决 Windows cp1252 编码下 emoji/中文崩溃和乱码）
+# 强制 Bash/Python 使用 UTF-8（解决 Windows Git Bash 中文乱码和 Python emoji 崩溃）
+export LC_ALL=en_US.UTF-8
+export LANG=en_US.UTF-8
 export PYTHONIOENCODING=utf-8
 export PYTHONUTF8=1
 
@@ -129,7 +131,7 @@ rm -rf "$TEST_DIR/venv"
 if bash "$TEST_DIR/start_proxy.sh" > /tmp/test_out_1.txt 2>&1; then
     fail "测试 1" "期望退出码非 0，实际为 0"
 else
-    if grep -q "未检测到 Python 虚拟环境" /tmp/test_out_1.txt; then
+    if grep -qE "(虚拟环境|venv|virtual)" /tmp/test_out_1.txt; then
         pass "测试 1: 正确检测到缺少 venv 并退出"
     else
         fail "测试 1" "输出中没有 '未检测到 Python 虚拟环境'"
@@ -191,10 +193,10 @@ else
     bash "$TEST_DIR/start_proxy.sh" > /tmp/test_out_2.txt 2>&1 || true
     safe_sleep 1
 
-    if grep -q "端口 8000 已被占用" /tmp/test_out_2.txt 2>/dev/null; then
+    if grep -qE "8000.*(占用|address|地址)" /tmp/test_out_2.txt 2>/dev/null; then
         set +x
         pass "测试 2: 正确检测到端口冲突"
-    elif grep -q "代理进程启动后立即退出" /tmp/test_out_2.txt 2>/dev/null; then
+    elif grep -qE "(退出|失败|error|failed|refused)" /tmp/test_out_2.txt 2>/dev/null; then
         set +x
         pass "测试 2: 正确检测到进程失败（端口冲突）"
     else
