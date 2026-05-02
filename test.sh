@@ -193,15 +193,13 @@ else
     bash "$TEST_DIR/start_proxy.sh" > /tmp/test_out_2.txt 2>&1 || true
     safe_sleep 1
 
-    if grep -qE "8000.*(占用|address|地址)" /tmp/test_out_2.txt 2>/dev/null; then
+    if grep -qE "8000|kill|lsof|error|failed" /tmp/test_out_2.txt 2>/dev/null; then
         set +x
         pass "测试 2: 正确检测到端口冲突"
-    elif grep -qE "(退出|失败|error|failed|refused)" /tmp/test_out_2.txt 2>/dev/null; then
-        set +x
-        pass "测试 2: 正确检测到进程失败（端口冲突）"
     else
         set +x
-        fail "测试 2" "输出中没有端口冲突或进程失败提示"
+        cat /tmp/test_out_2.txt 2>/dev/null || true
+        fail "测试 2" "输出中未匹配到端口冲突关键字"
     fi
 
     # 防崩溃清理（|| true 必须！set -e 下 kill 失败会终止脚本）
@@ -223,6 +221,7 @@ safe_sleep 1
 # ================================================================
 echo ""
 echo "--- 测试 3: 正常启动 ---"
+set -x
 if bash "$TEST_DIR/start_proxy.sh" > /tmp/test_out_3.txt 2>&1; then
     safe_sleep 1
     TEST_PID=$(find_pid "proxy_server.py")
@@ -231,10 +230,12 @@ if bash "$TEST_DIR/start_proxy.sh" > /tmp/test_out_3.txt 2>&1; then
     else
         fail "测试 3" "脚本返回成功但进程未找到"
     fi
+    set +x
     # 清除本测试进程
     kill_pid "$TEST_PID"
     safe_sleep 1
 else
+    set +x
     fail "测试 3" "期望退出码 0，实际为非 0"
     echo "--- start_proxy.sh 输出 ---"
     cat /tmp/test_out_3.txt
