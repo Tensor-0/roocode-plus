@@ -23,7 +23,7 @@ echo "[1/4] 检查 Python 环境..."
 PYTHON=""
 for cmd in python3 python; do
     if command -v "$cmd" &>/dev/null; then
-        version=$("$cmd" --version 2>&1 | grep -oP '\d+\.\d+')
+        version=$("$cmd" --version 2>&1 | grep -oE '[0-9]+\.[0-9]+')
         major=$(echo "$version" | cut -d. -f1)
         minor=$(echo "$version" | cut -d. -f2)
         if [ "$major" -ge 3 ] && [ "$minor" -ge 10 ]; then
@@ -68,7 +68,7 @@ echo ""
 
 # 如果 .env 已存在，询问是否覆盖
 if [ -f ".env" ]; then
-    existing=$(grep -oP 'DEEPSEEK_API_KEY=\K.*' .env 2>/dev/null || true)
+    existing=$(sed -n 's/^DEEPSEEK_API_KEY=//p' .env 2>/dev/null || true)
     if [ -n "$existing" ]; then
         echo "  当前 .env 中已有 Key: ${existing:0:12}..."
         echo ""
