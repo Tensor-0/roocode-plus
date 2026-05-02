@@ -55,7 +55,15 @@ else
 fi
 
 echo "  ⏳ 安装依赖 (fastapi, httpx, uvicorn)..."
-"$SCRIPT_DIR/venv/bin/pip" install -r requirements.txt -q
+
+# 跨平台 venv 路径：Windows 用 Scripts/，Linux/macOS 用 bin/
+if [ -f "$SCRIPT_DIR/venv/Scripts/pip.exe" ]; then
+    VENV_PIP="$SCRIPT_DIR/venv/Scripts/pip.exe"
+else
+    VENV_PIP="$SCRIPT_DIR/venv/bin/pip"
+fi
+
+"$VENV_PIP" install -r requirements.txt -q
 echo "  ✓ 依赖安装完成"
 echo ""
 

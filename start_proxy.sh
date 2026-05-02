@@ -52,7 +52,14 @@ fi
 echo "[启动] 正在启动适配代理..."
 echo ""
 
-nohup ./venv/bin/python proxy_server.py > proxy.log 2>&1 &
+# 跨平台 venv 路径：Windows 用 Scripts/，Linux/macOS 用 bin/
+if [ -f "venv/Scripts/python.exe" ]; then
+    VENV_PYTHON="venv/Scripts/python.exe"
+else
+    VENV_PYTHON="venv/bin/python"
+fi
+
+nohup $VENV_PYTHON proxy_server.py > proxy.log 2>&1 &
 PID=$!
 
 # 等待一瞬间，检查进程是否存活（端口冲突等会导致进程立即退出）

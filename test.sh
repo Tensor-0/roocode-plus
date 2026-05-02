@@ -69,11 +69,21 @@ fi
 echo ""
 echo "--- 搭建测试 venv + .env ---"
 python3 -m venv venv --without-pip 2>/dev/null || python3 -m venv venv 2>/dev/null
-if [ -f venv/bin/pip ]; then
-    venv/bin/pip install -r requirements.txt -q 2>&1
+
+# 跨平台 venv 路径：Windows 用 Scripts/，Linux/macOS 用 bin/
+if [ -f "venv/Scripts/python.exe" ]; then
+    VENV_PYTHON="venv/Scripts/python.exe"
+    VENV_PIP="venv/Scripts/pip.exe"
 else
-    curl -sS https://bootstrap.pypa.io/get-pip.py | venv/bin/python -q 2>&1
-    venv/bin/pip install -r requirements.txt -q 2>&1
+    VENV_PYTHON="venv/bin/python"
+    VENV_PIP="venv/bin/pip"
+fi
+
+if [ -f "$VENV_PIP" ]; then
+    "$VENV_PIP" install -r requirements.txt -q 2>&1
+else
+    curl -sS https://bootstrap.pypa.io/get-pip.py | "$VENV_PYTHON" -q 2>&1
+    "$VENV_PIP" install -r requirements.txt -q 2>&1
 fi
 echo "DEEPSEEK_API_KEY=sk-test-fake-key-123" > .env
 chmod 600 .env
