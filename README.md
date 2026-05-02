@@ -571,10 +571,14 @@ tail -f ~/roocode-plus/proxy.log
 
 ```
 roocode-plus/
-├── install.sh           # 一键安装脚本（创建 venv、安装依赖、配置 Key、添加别名）
-├── start_proxy.sh       # 启动脚本（自动加载 .env，无需激活 venv）
-├── proxy_server.py      # 适配核心
-├── requirements.txt     # Python 依赖声明
+├── install.sh                # 一键安装脚本（创建 venv、安装依赖、配置 Key、添加别名）
+├── start_proxy.sh            # 启动脚本（自动加载 .env，无需激活 venv）
+├── proxy_server.py           # 适配核心
+├── test.sh                   # 集成测试（脚本 happy path + 错误场景）
+├── test_proxy.py             # Python 单元测试（适配器逻辑 + 端点）
+├── requirements.txt          # 运行依赖
+├── requirements-dev.txt      # 测试依赖
+├── .github/workflows/        # GitHub Actions CI（三平台自动测试）
 ├── .gitignore
 ├── .clinerules
 └── README.md
