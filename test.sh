@@ -82,6 +82,13 @@ cleanup() {
     if [ -n "$TEST_PID" ]; then
         kill_pid "$TEST_PID"
     fi
+    # Windows 兜底：杀残留 Python 进程
+    if $IS_WINDOWS; then
+        taskkill //F //IM python.exe > /dev/null 2>&1 || true
+    fi
+    sleep 1
+    # 切换出测试目录再删（防止自己占着目录导致 busy）
+    cd /tmp 2>/dev/null || cd "$SCRIPT_DIR" || true
     rm -rf "$TEST_DIR"
 }
 trap cleanup EXIT
@@ -194,9 +201,13 @@ else
     # 防崩溃清理（|| true 必须！set -e 下 kill 失败会终止脚本）
     if $IS_WINDOWS; then
         taskkill //F //PID "$DUMMY_PID" > /dev/null 2>&1 || true
+        # 兜底：无差别杀残留 python 进程
+        taskkill //F //IM python.exe > /dev/null 2>&1 || true
     else
         kill -9 "$DUMMY_PID" > /dev/null 2>&1 || true
     fi
+    # 给 Windows 留出释放端口和目录锁的时间
+    safe_sleep 2
 fi
 set +x
 safe_sleep 1
@@ -219,7 +230,10 @@ if bash "$TEST_DIR/start_proxy.sh" > /tmp/test_out_3.txt 2>&1; then
     safe_sleep 1
 else
     fail "测试 3" "期望退出码 0，实际为非 0"
+    echo "--- start_proxy.sh 输出 ---"
     cat /tmp/test_out_3.txt
+    echo "--- proxy.log 内容 ---"
+    cat "$TEST_DIR/proxy.log" 2>/dev/null || true
 fi
 
 # ================================================================
