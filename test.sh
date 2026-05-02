@@ -39,11 +39,8 @@ esac
 find_pid() {
     local keyword="$1"
     if $IS_WINDOWS; then
-        # Windows: 用 tasklist + 管道查找 python 进程（关键字匹配靠人工判断，这里取所有 python.exe）
-        # 精确匹配：用 WMIC 查命令行
         local pids
         pids=$(tasklist //FI "IMAGENAME eq python.exe" //FO CSV //NH 2>/dev/null | cut -d, -f2 | tr -d '"' | tr -d ' ')
-        # 遍历 PID，用 wmic 检查命令行中是否含有关键字
         for pid in $pids; do
             if wmic process where "ProcessId=$pid" get CommandLine 2>/dev/null | tr -d '\000' | grep -q "$keyword"; then
                 echo "$pid"
@@ -52,7 +49,6 @@ find_pid() {
         done
         return 1
     else
-        # Unix: 用 ps + grep
         ps aux | grep "$keyword" | grep -v grep | awk '{print $2}' | head -1
     fi
 }
@@ -83,17 +79,37 @@ safe_sleep() {
     sleep "$1" 2>/dev/null || sleep 1
 }
 
+# 跨平台强杀所有 python 进程（仅测试清理用）
+nuke_all_python() {
+    if $IS_WINDOWS; then
+        taskkill //F //IM python.exe > /dev/null 2>&1 || true
+    else
+        pkill -9 -f python 2>/dev/null || true
+    fi
+}
+
+# 跨平台杀占用指定端口的进程
+kill_port() {
+    local port="$1"
+    if $IS_WINDOWS; then
+        # Windows: 用 netstat 找 PID 然后用 taskkill
+        local pid
+        pid=$(netstat -ano 2>/dev/null | grep ":$port " | grep LISTENING | awk '{print $NF}' | head -1)
+        if [ -n "$pid" ]; then
+            taskkill //F //PID "$pid" > /dev/null 2>&1 || true
+        fi
+    else
+        # Unix: lsof 或 fuser
+        kill $(lsof -t -i:$port) 2>/dev/null || fuser -k ${port}/tcp 2>/dev/null || true
+    fi
+}
+
 cleanup() {
-    # 杀掉测试中启动的代理进程
     if [ -n "$TEST_PID" ]; then
         kill_pid "$TEST_PID"
     fi
-    # Windows 兜底：杀残留 Python 进程
-    if $IS_WINDOWS; then
-        taskkill //F //IM python.exe > /dev/null 2>&1 || true
-    fi
+    nuke_all_python
     sleep 1
-    # 切换出测试目录再删（防止自己占着目录导致 busy）
     cd /tmp 2>/dev/null || cd "$SCRIPT_DIR" || true
     rm -rf "$TEST_DIR"
 }
@@ -116,7 +132,6 @@ mkdir -p "$TEST_DIR"
 cp -r "$SCRIPT_DIR"/* "$TEST_DIR/"
 rm -rf "$TEST_DIR/.git" "$TEST_DIR/.vscode"
 cd "$TEST_DIR"
-# Windows 下不需要 chmod +x
 if ! $IS_WINDOWS; then
     chmod +x install.sh start_proxy.sh
 fi
@@ -134,7 +149,7 @@ else
     if grep -qE "(虚拟环境|venv|virtual)" /tmp/test_out_1.txt; then
         pass "测试 1: 正确检测到缺少 venv 并退出"
     else
-        fail "测试 1" "输出中没有 '未检测到 Python 虚拟环境'"
+        fail "测试 1" "输出中没有 '虚拟环境/venv/virtual'"
     fi
 fi
 
@@ -169,9 +184,9 @@ echo "  venv + .env 就绪"
 # ================================================================
 echo ""
 echo "--- 测试 2: 端口冲突时应报错退出 ---"
-set -x  # 调试模式：CI 日志中打印每条命令
+set -x
 
-# 用 Python 可靠占住 8000 端口（跨平台，绕过 bash 进程管理的坑）
+# 用 Python 可靠占住 8000 端口（跨平台）
 DUMMY_PID=""
 "$VENV_PYTHON" -c "
 import socket, time
@@ -202,44 +217,47 @@ else
         fail "测试 2" "输出中未匹配到端口冲突关键字"
     fi
 
-    # 防崩溃清理（|| true 必须！set -e 下 kill 失败会终止脚本）
+    # 防崩溃清理
     if $IS_WINDOWS; then
         taskkill //F //PID "$DUMMY_PID" > /dev/null 2>&1 || true
-        # 兜底：无差别杀残留 python 进程
         taskkill //F //IM python.exe > /dev/null 2>&1 || true
     else
         kill -9 "$DUMMY_PID" > /dev/null 2>&1 || true
     fi
-    # 给 Windows 留出释放端口和目录锁的时间
     safe_sleep 2
 fi
 set +x
-# 强制清理残留进程后等待端口释放（测试 2 → 测试 3 过渡）
-taskkill //F //IM python.exe > /dev/null 2>&1 || kill -9 $DUMMY_PID > /dev/null 2>&1 || true
-safe_sleep 2
-# 硬核清理：确保测试 2 占端口的进程已死透
-taskkill //F //IM python.exe > /dev/null 2>&1 || kill -9 $DUMMY_PID > /dev/null 2>&1 || true
+nuke_all_python
 safe_sleep 2
 
 # ================================================================
-# 测试 3: start_proxy.sh — 正常启动（端口空闲）
+# 测试 3: start_proxy.sh — 正常启动（curl 验证端口）
 # ================================================================
 echo ""
 echo "--- 测试 3: 正常启动 ---"
 set -x
 if bash "$TEST_DIR/start_proxy.sh" > /tmp/test_out_3.txt 2>&1; then
-    safe_sleep 1
-    TEST_PID=$(find_pid "proxy_server.py") || true
-    if [ -n "$TEST_PID" ]; then
-        pass "测试 3: 代理正常启动 (PID=$TEST_PID)"
-    else
-        echo "=== 测试 3 代理启动失败！下面是致命错误日志：==="
-        cat "$TEST_DIR/proxy.log" 2>/dev/null || true
-        fail "测试 3" "脚本返回成功但进程未找到"
-    fi
     set +x
-    # 清除本测试进程
-    kill_pid "$TEST_PID"
+    # 用 curl 重试验证端口（比查找进程名更可靠）
+    TEST_PASS=0
+    for i in 1 2 3 4 5; do
+        if curl -s http://127.0.0.1:8000/docs > /dev/null 2>&1; then
+            TEST_PASS=1
+            break
+        fi
+        safe_sleep 1
+    done
+
+    if [ "$TEST_PASS" = "1" ]; then
+        pass "测试 3: 代理成功响应 HTTP 请求"
+    else
+        echo "=== 测试 3 代理响应失败！下面是日志：==="
+        cat "$TEST_DIR/proxy.log" 2>/dev/null || true
+        fail "测试 3" "代理未能响应请求"
+    fi
+
+    # 清理：杀占用 8000 端口的进程
+    kill_port 8000
     safe_sleep 1
 else
     set +x
@@ -248,6 +266,8 @@ else
     cat /tmp/test_out_3.txt
     echo "--- proxy.log 内容 ---"
     cat "$TEST_DIR/proxy.log" 2>/dev/null || true
+    # 清理可能的残留
+    kill_port 8000
 fi
 
 # ================================================================
