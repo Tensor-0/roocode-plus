@@ -35,10 +35,12 @@ echo "============================================"
 echo ""
 
 # ---------- 环境准备 ----------
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 TEST_DIR="/tmp/roocode-test-$$"
 echo "[准备] 创建隔离测试环境: $TEST_DIR"
+echo "[准备] 从 $SCRIPT_DIR 复制项目文件..."
 mkdir -p "$TEST_DIR"
-cp -r /home/zhan/Github/roocode-plus/* "$TEST_DIR/"
+cp -r "$SCRIPT_DIR"/* "$TEST_DIR/"
 # .git 目录太大，不复制（测试用不到）；.vscode 也不复制
 rm -rf "$TEST_DIR/.git" "$TEST_DIR/.vscode"
 cd "$TEST_DIR"
