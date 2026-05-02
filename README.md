@@ -14,6 +14,7 @@ Roo Code 的多模型适配层。解决 Roo Code 切换到不同模型时遇到�
 | 没用过 VS Code，没用过终端，第一次接触 AI 编程 | [零基础教程](#零基础教程) |
 | 还不知道怎么搞到 DeepSeek API Key（没注册、没充值） | [获取 DeepSeek API Key](#获取-deepseek-api-key) |
 | 会用 VS Code 和终端，知道 venv/pip 是什么 | [专业用户快速上手](#专业用户快速上手) |
+| 退出终端 / 关机后不知道怎么重新启动 | [再次运行指南](#再次运行指南) |
 | 想了解安全模型，代码有没有埋坑 | [安全性说明](#安全性说明) |
 | 已经启动了，要在 Roo Code 里配置 | [Roo Code 配置指南](#roo-code-配置指南) |
 | 出错了 | [故障排除](#故障排除) |
@@ -313,6 +314,135 @@ Roo Code  ---请求--->  RooCode Plus (127.0.0.1:8000)  ---修正后--->  目标
 
 ---
 
+## 再次运行指南
+
+退出终端或关机后，代理进程就结束了——它在后台跑，终端一关进程就没了。下次要用的时候需要重新启动。
+
+好消息是：虚拟环境和依赖只装一次，不用再装。Roo Code 里的配置也不用改。只需要重新启动代理。
+
+### 零基础用户
+
+如果你之前是跟着[零基础教程](#零基础教程)一步步来的，现在重新启动只需要这些步骤：
+
+**第一步：打开终端**
+
+VS Code 里按 `` Ctrl+` ``（ESC 下面那个键），底部弹出终端窗口。
+
+**第二步：进入项目文件夹**
+
+```bash
+cd ~/roocode-plus
+```
+
+**第三步：激活虚拟环境**
+
+```bash
+source venv/bin/activate
+```
+
+终端前面出现 `(venv)` 就说明成功了。这一步是告诉电脑：「我要用这个项目专属的环境」。
+
+**第四步：设置 API Key**
+
+```bash
+export DEEPSEEK_API_KEY="sk-你的真实密钥"
+```
+
+如果你已经把 Key 写入了 `~/.bashrc`（见下方[持久化 API Key](#持久化-api-key不想每次重输)），跳过这步——激活虚拟环境后 Key 已经在环境中了。
+
+**第五步：启动代理**
+
+```bash
+./start_proxy.sh
+```
+
+看到：
+
+```text
+[成功] RooCode Plus 已在后台启动！PID: 12345
+       监听地址: http://127.0.0.1:8000/v1/chat/completions
+```
+
+就完成了。现在切回 Roo Code 聊天面板，直接继续对话。
+
+---
+
+**如果你忘了 API Key 是什么：**
+- Key 是在 [platform.deepseek.com](https://platform.deepseek.com/) 的 API Keys 页面创建的
+- 如果找不到原来的 Key，登上去「API Keys」页面，删掉旧的，创建一个新的
+
+---
+
+### 专业用户
+
+如果 Key 已写入 `~/.bashrc` 或 `~/.zshrc`：
+
+```bash
+cd ~/roocode-plus && source venv/bin/activate && ./start_proxy.sh
+```
+
+如果 Key 没持久化，需要先 export：
+
+```bash
+cd ~/roocode-plus
+source venv/bin/activate
+export DEEPSEEK_API_KEY="sk-你的真实密钥"
+./start_proxy.sh
+```
+
+---
+
+### 持久化 API Key（不想每次重输）
+
+每次重新输 Key 很麻烦。一次设好，以后打开终端 Key 自动生效。
+
+**方法一：写入 shell 配置文件（推荐）**
+
+打开终端（确保不在任何虚拟环境里），执行：
+
+```bash
+echo 'export DEEPSEEK_API_KEY="sk-你的真实密钥"' >> ~/.bashrc
+source ~/.bashrc
+```
+
+注意：如果你用的是 zsh（终端标题栏有 zsh 字样），把 `~/.bashrc` 换成 `~/.zshrc`。
+
+**怎么判断用的是 bash 还是 zsh？** 终端里输入：
+
+```bash
+echo $SHELL
+```
+
+输出 `/bin/bash` 就是 bash，输出 `/bin/zsh` 就是 zsh。
+
+以后每次打开新终端，Key 自动生效，启动代理前不需要再 export 了。直接用：
+
+```bash
+cd ~/roocode-plus && source venv/bin/activate && ./start_proxy.sh
+```
+
+**方法二：创建 .env 文件（隔离在项目内）**
+
+如果你不想把 Key 写到全局配置文件里，可以只在项目文件夹里放一个 `.env` 文件：
+
+```bash
+cd ~/roocode-plus
+echo 'DEEPSEEK_API_KEY=sk-你的真实密钥' > .env
+```
+
+`.env` 已经在 `.gitignore` 中，不会被提交到 GitHub。
+
+启动前需要手动加载：
+
+```bash
+cd ~/roocode-plus
+source .env
+source venv/bin/activate
+./start_proxy.sh
+```
+
+---
+
 ## 故障排除
 
 ### 1. 提示 'git' 未找到
@@ -379,7 +509,7 @@ pip install -i https://pypi.tuna.tsinghua.edu.cn/simple -r requirements.txt
 ```
 [1] 代理还在运行吗？
     ps aux | grep proxy_server
-    没输出就是挂了，重新 ./start_proxy.sh
+    没输出就是挂了，重新启动（见再次运行指南）
 
 [2] Base URL 对吗？
     http://127.0.0.1:8000/v1
@@ -419,23 +549,7 @@ kill $(ps aux | grep proxy_server | grep -v grep | awk '{print $2}')
 
 ### 9. 电脑关机后连不上了
 
-代理进程关机就没了，export 设置的 Key 也丢了。
-
-重启后：
-
-```bash
-cd ~/roocode-plus
-source venv/bin/activate
-export DEEPSEEK_API_KEY="sk-你的真实密钥"
-./start_proxy.sh
-```
-
-不想每次重设 Key：
-
-```bash
-echo 'export DEEPSEEK_API_KEY="sk-你的真实密钥"' >> ~/.bashrc
-source ~/.bashrc
-```
+这是正常的——代理进程关机会结束。重新启动的完整步骤见[再次运行指南](#再次运行指南)。虚拟环境和 Roo Code 配置都在，不用重新装。
 
 ### 10. 端口被占用
 
