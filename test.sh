@@ -217,6 +217,9 @@ set +x
 # 强制清理残留进程后等待端口释放（测试 2 → 测试 3 过渡）
 taskkill //F //IM python.exe > /dev/null 2>&1 || kill -9 $DUMMY_PID > /dev/null 2>&1 || true
 safe_sleep 2
+# 硬核清理：确保测试 2 占端口的进程已死透
+taskkill //F //IM python.exe > /dev/null 2>&1 || kill -9 $DUMMY_PID > /dev/null 2>&1 || true
+safe_sleep 2
 
 # ================================================================
 # 测试 3: start_proxy.sh — 正常启动（端口空闲）
@@ -226,11 +229,11 @@ echo "--- 测试 3: 正常启动 ---"
 set -x
 if bash "$TEST_DIR/start_proxy.sh" > /tmp/test_out_3.txt 2>&1; then
     safe_sleep 1
-    TEST_PID=$(find_pid "proxy_server.py")
+    TEST_PID=$(find_pid "proxy_server.py") || true
     if [ -n "$TEST_PID" ]; then
         pass "测试 3: 代理正常启动 (PID=$TEST_PID)"
     else
-        echo "--- proxy.log 内容 ---"
+        echo "=== 测试 3 代理启动失败！下面是致命错误日志：==="
         cat "$TEST_DIR/proxy.log" 2>/dev/null || true
         fail "测试 3" "脚本返回成功但进程未找到"
     fi
