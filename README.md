@@ -18,6 +18,7 @@ Roo Code 的多模型适配层。解决 Roo Code 切换到不同模型时遇到�
 | 想了解安全模型，代码有没有埋坑 | [安全性说明](#安全性说明) |
 | 已经启动了，要在 Roo Code 里配置 | [Roo Code 配置指南](#roo-code-配置指南) |
 | 出错了 | [故障排除](#故障排除) |
+| 想了解项目文件是干什么的 | [项目文件架构](#项目文件架构) |
 
 ---
 
@@ -567,22 +568,86 @@ tail -f ~/roocode-plus/proxy.log
 
 ---
 
-## 项目结构
+## 项目文件架构
 
+### 文件分组
+
+| 分组 | 文件 | 用途 | 你什么时候会碰到它 |
+|------|------|------|---------------------|
+| 🚀 运行核心 | [`proxy_server.py`](proxy_server.py) | FastAPI 适配代理，拦截请求 → 参数修正 → 转发 | 改适配逻辑、加新模型 |
+| | [`start_proxy.sh`](start_proxy.sh) | 一键启动脚本，自动加载 `.env` 和 venv | 每次启动代理（或通过 `roocode` 别名） |
+| | [`install.sh`](install.sh) | 一键安装：Python 检测 → venv → pip → `.env` → 别名 | 第一次配置，或换了电脑 |
+| 📦 依赖声明 | [`requirements.txt`](requirements.txt) | 运行依赖：fastapi、httpx、uvicorn | 手动安装时 `pip install -r` |
+| | [`requirements-dev.txt`](requirements-dev.txt) | 测试依赖：pytest、pytest-httpx、pytest-asyncio | 跑单元测试前 `pip install -r` |
+| 🧪 测试体系 | [`test.sh`](test.sh) | bash 集成测试（/tmp 隔离，4 个场景） | 改了脚本后本地验证 |
+| | [`test_proxy.py`](test_proxy.py) | pytest 单元测试（13 用例，mock 上游 API） | 改了 `proxy_server.py` 后跑 |
+| | [`.github/workflows/test.yml`](.github/workflows/test.yml) | GitHub Actions CI，三平台自动跑 | push 代码后 GitHub 自动触发 |
+| ⚙️ 工程配置 | [`.gitignore`](.gitignore) | 排除 `venv/`、`.env`、`*.log`、`__pycache__/` | 不会手动碰 |
+| | [`.clinerules`](.clinerules) | 本项目代码规范 | 贡献代码时参考 |
+| | [`README.md`](README.md) | 就是本文档 | 任何时候 |
+
+### 架构与调用关系
+
+```mermaid
+flowchart LR
+    subgraph 用户["👤 用户"]
+        ROO["Roo Code<br/>(VS Code 扩展)"]
+        TERM["终端"]
+    end
+
+    subgraph 安装["🔧 初次配置（只做一次）"]
+        INSTALL["install.sh"]
+        VENV["venv/"]
+        DOTENV[".env<br/>(API Key)"]
+    end
+
+    subgraph 运行["🚀 每次启动"]
+        START["start_proxy.sh<br/>（或 roocode 别名）"]
+        PROXY["proxy_server.py<br/>FastAPI :8000"]
+        PATCH["apply_model_patches()"]
+    end
+
+    subgraph 上游["☁️ 上游 API"]
+        DS["api.deepseek.com"]
+    end
+
+    subgraph 测试["🧪 质量保障"]
+        TSH["test.sh"]
+        TPY["test_proxy.py"]
+        CI[".github/workflows<br/>三平台 CI"]
+    end
+
+    TERM -->|"bash install.sh"| INSTALL
+    INSTALL -->|"创建"| VENV
+    INSTALL -->|"写入"| DOTENV
+
+    TERM -->|"./start_proxy.sh"| START
+    START -->|"加载 Key"| DOTENV
+    START -->|"venv/bin/python"| PROXY
+    PROXY -->|"请求修正"| PATCH
+    PATCH -->|"HTTPS 转发"| DS
+
+    ROO -->|"HTTP :8000/v1"| PROXY
+
+    TSH -->|"测试"| INSTALL
+    TSH -->|"测试"| START
+    TPY -->|"测试"| PATCH
+    CI -->|"触发"| TSH
+    CI -->|"触发"| TPY
 ```
-roocode-plus/
-├── install.sh                # 一键安装脚本（创建 venv、安装依赖、配置 Key、添加别名）
-├── start_proxy.sh            # 启动脚本（自动加载 .env，无需激活 venv）
-├── proxy_server.py           # 适配核心
-├── test.sh                   # 集成测试（脚本 happy path + 错误场景）
-├── test_proxy.py             # Python 单元测试（适配器逻辑 + 端点）
-├── requirements.txt          # 运行依赖
-├── requirements-dev.txt      # 测试依赖
-├── .github/workflows/        # GitHub Actions CI（三平台自动测试）
-├── .gitignore
-├── .clinerules
-└── README.md
-```
+
+**调用链路说明：**
+
+1. [`install.sh`](install.sh) 创建 `venv/` 并将 API Key 写入 `.env`（已在 `.gitignore` 排除）
+2. [`start_proxy.sh`](start_proxy.sh) 启动时自动 `source .env` 加载 Key，用 `venv/bin/python` 运行 [`proxy_server.py`](proxy_server.py)
+3. [`proxy_server.py`](proxy_server.py) 收到 Roo Code 的请求后，调用 [`apply_model_patches()`](proxy_server.py:55) 修正参数，然后转发到 `api.deepseek.com`
+4. Roo Code 在 VS Code 中将 `http://127.0.0.1:8000/v1` 设为 Base URL，所有对话请求经本地代理中转
+
+**测试链路说明：**
+
+- [`test.sh`](test.sh) 在 `/tmp` 下创建隔离环境，验证 [`install.sh`](install.sh) 和 [`start_proxy.sh`](start_proxy.sh) 的 happy path + 错误场景
+- [`test_proxy.py`](test_proxy.py) 用 pytest + mock 验证 [`apply_model_patches()`](proxy_server.py:55) 的 9 种输入组合和 2 种端点行为
+- [`.github/workflows/test.yml`](.github/workflows/test.yml) 每次 push/PR 在 ubuntu、macOS、Windows 三平台自动运行以上全部测试
 
 ---
 
